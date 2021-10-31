@@ -67,12 +67,19 @@ df['occupation'] = df['occupation'].astype('category')
 # Creating an instance(data) of Datetimeindex class using last_transaction
 df['last_transaction'] = pd.DatetimeIndex(df['last_transaction'])
 
-# extract new columns from last_transaction
+# There are only 3 values that last_transaction in 2018
+# All other records are in 2019 so drop 2018 values
 date = pd.DatetimeIndex(df['last_transaction'])
-
 df.drop(['last_transaction'], axis=1)
+indexNames = df[date.year == 2018].index
+df.drop(indexNames, inplace=True)
+df = df.reset_index(drop=True)
+
+# Dealing with nan values in last_transaction
+date = pd.DatetimeIndex(df['last_transaction'])
 df['last_transaction'] = date.month
-print(df['last_transaction'].value_counts())
+last_transaction_mode = df['last_transaction'].mode()
+df['last_transaction'] = df['last_transaction'].fillna(float(last_transaction_mode))
 
 # Drop customer_id
 df.drop(['customer_id'], axis=1, inplace=True)
@@ -89,7 +96,10 @@ df['dependents'] = df['dependents'].fillna(0.0)
 df['occupation'] = df['occupation'].fillna('self_employed')
 
 # Dealing with nan values in city
-df['city'] = df['city'].fillna(1020)
+city_mode = df['city'].mode()
+df['city'] = df['city'].fillna(float(city_mode))
+
+print(str(df.isnull().sum()) + "\n")
 
 # Now change gender into category type
 df['gender'] = df['gender'].astype('category')
@@ -125,6 +135,7 @@ df=df.drop(['branch_code'],axis=1)
 df=df.drop(['churn'],axis=1)
 df=df.drop(['last_transaction'],axis=1)
 
+"""
 # Show outlier value.
 outlier_list = df.columns
 for i in outlier_list:
@@ -137,3 +148,4 @@ outlier_index = outlier(df, df.columns)
 # Deletion outlier values.
 df = df.drop(outlier_index, axis=0).reset_index(drop=True)
 print(df)
+"""
