@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
+from collections import Counter
 from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -10,6 +11,31 @@ warnings.simplefilter(action='ignore', category=UserWarning)
 warnings.filterwarnings('ignore')
 sns.set(style='white')
 
+def outlier_show(variable):
+    sns.boxplot(df[variable])
+    plt.show()
+
+# Extract the index of the row with outliers from the feature
+def outlier(df, feature):
+    out_indexer = []
+    for i in feature:
+        Q1 = df[i].quantile(0.25)
+        Q3 = df[i].quantile(0.75)
+
+        IQR = Q3 - Q1
+
+        alt_sinir = Q1 - 1.5 * IQR
+        ust_sinir = Q3 + 1.5 * IQR
+
+        out = ((df[i] < alt_sinir) | (df[i] > ust_sinir))
+
+        out_index = df[i][out].index
+        out_indexer.extend(out_index)
+
+    out_indexer = Counter(out_indexer)
+
+    outlier_index = [i for i, v in out_indexer.items() if v > 0]
+    return outlier_index
 
 def UVA_numeric(data, var_group):
     size = len(var_group)
@@ -278,3 +304,21 @@ df['city'] = df['city'].fillna(1020)
 df['gender'] = df['gender'].astype('category')
 
 print(str(df.isnull().sum()) + "\n")
+
+# Show outlier value.
+outlier_list = ['vintage','age','dependents','current_balance','previous_month_end_balance',
+'average_monthly_balance_prevQ','average_monthly_balance_prevQ2','current_month_credit',
+'previous_month_credit','current_month_debit','previous_month_debit','current_month_balance',
+'previous_month_balance']
+for i in outlier_list:
+    outlier_show(i)
+
+# Find outlier indexes
+outlier_index = outlier(df, ['vintage','age','dependents','current_balance','previous_month_end_balance',
+'average_monthly_balance_prevQ','average_monthly_balance_prevQ2','current_month_credit',
+'previous_month_credit','current_month_debit','previous_month_debit','current_month_balance',
+'previous_month_balance'])
+
+# Deletion outlier values.
+df = df.drop(outlier_index, axis=0).reset_index(drop=True)
+print(df)
