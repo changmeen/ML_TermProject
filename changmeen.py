@@ -70,7 +70,7 @@ df['last_transaction'] = pd.DatetimeIndex(df['last_transaction'])
 # extract new columns from last_transaction
 date = pd.DatetimeIndex(df['last_transaction'])
 
-df['last_transaction'].drop()
+df.drop(['last_transaction'], axis=1)
 df['last_transaction'] = date.month
 print(df['last_transaction'].value_counts())
 
@@ -94,13 +94,45 @@ df['city'] = df['city'].fillna(1020)
 # Now change gender into category type
 df['gender'] = df['gender'].astype('category')
 
+col=[
+    'current_balance',
+    'previous_month_end_balance',
+    'average_monthly_balance_prevQ',
+    'average_monthly_balance_prevQ2',
+    'current_month_balance',
+    'previous_month_balance',
+    'current_month_credit',
+    'previous_month_credit',
+    'current_month_debit',
+    'previous_month_debit'
+]
+
+df['current credit usage']=(df[col[6]]*100)/(df[col[6]]+df[col[8]])
+df['previous credit usage']=(df[col[7]]*100)/(df[col[7]]+df[col[9]])
+df['current total spending']=df[col[6]]+df[col[8]]
+df['previous total spending']=df[col[7]]+df[col[9]]
+df['current total income']=df[col[4]]-df[col[6]]-df[col[8]]
+df['previous total income']=df[col[5]]-df[col[7]]-df[col[9]]
+df['current income to spending ratio']=(df[col[4]]*100)/(df[col[4]]+df[col[6]]+df[col[8]])
+df['previous income to spending ratio']=(df[col[5]]*100)/(df[col[5]]+df[col[7]]+df[col[9]])
+
+df=df.drop(['dependents'],axis=1)
+df=df.drop(['gender'],axis=1)
+df=df.drop(['occupation'],axis=1)
+df=df.drop(['city'],axis=1)
+df=df.drop(['customer_nw_category'],axis=1)
+df=df.drop(['branch_code'],axis=1)
+df=df.drop(['churn'],axis=1)
+df=df.drop(['last_transaction'],axis=1)
+
 # Show outlier value.
-outlier_list = ['vintage', 'age']
+outlier_list = df.columns
 for i in outlier_list:
+    print(i)
     outlier_show(i)
 
 # Find outlier indexes
-outlier_index = outlier(df, ['vintage', 'age'])
+outlier_index = outlier(df, df.columns)
 
 # Deletion outlier values.
 df = df.drop(outlier_index, axis=0).reset_index(drop=True)
