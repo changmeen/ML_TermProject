@@ -8,7 +8,7 @@ from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
-df = pd.read_csv("Banking_churn_prediction.csv")
+df = pd.read_csv("C:/Users/MOS/Desktop/Banking_churn_prediction.csv")
 
 #Churn plot-------
 Churn_plot = df['churn'].value_counts().reset_index()
@@ -18,7 +18,7 @@ sns.countplot(x=df['churn'])
 plt.title('Rate of churn', fontsize=20)
 plt.xlabel('Churn')
 plt.ylabel('Count')
-plt.show()
+plt.show() 
 #------------------
 
 
@@ -28,32 +28,58 @@ sns.countplot(x=df['occupation'])
 plt.title('Rate of occupation', fontsize=20)
 plt.xlabel('occupation')
 plt.ylabel('Count')
+plt.show() 
+#------------------
+
+#gender plot-------
+plt.figure(figsize=(7, 7))
+sns.countplot(x=df['gender'])
+plt.title('Rate of gender', fontsize=20)
+plt.xlabel('Gender')
+plt.ylabel('Count')
 plt.show()
 #------------------
 
-#find outlier---------
-fig, ax = plt.subplots(1, 4, figsize=(16, 4))
-ax[0].boxplot(df['current_balance'])
-ax[0].set_title("current_balance")
-ax[1].boxplot(df['current_month_credit'])
-ax[1].set_title("current_month_credit")
-ax[2].boxplot(df['current_month_debit'])
-ax[2].set_title("current_month_debit")
-ax[3].boxplot(df['current_month_balance'])
-ax[3].set_title("current_month_balance")
+# branch_code plot-------
+plt.bar(range(len(df['branch_code'])), df['branch_code'])
+plt.title('Rate of branch_code', fontsize=20)
+plt.xlabel('branch_code')
+plt.ylabel('Count')
 plt.show()
-# #------------------
+# ------------------
 
-#Relation about (previous & current balance/credit/debit/mothly balance) & (Churn)
-fig = plt.figure(figsize=(7, 7))
-graph = sns.scatterplot(data=df, x='previous_month_end_balance', y='current_balance', hue='churn')
+#age plot-------
+df[["age"]].hist(bins=10)
+plt.title('Rate of age', fontsize=20)
+plt.xlabel('age')
+plt.ylabel('Count')
 plt.show()
-graph = sns.scatterplot(data=df, x='previous_month_credit', y='current_month_credit', hue='churn')
-plt.show()
-graph = sns.scatterplot(data=df, x='previous_month_debit', y='current_month_debit', hue='churn')
-plt.show()
-graph = sns.scatterplot(data=df, x='previous_month_balance', y='current_month_balance', hue='churn')
-plt.show()
+#------------------
+
+
+# #find outlier---------
+# fig, ax = plt.subplots(1, 4, figsize=(16, 4))
+# ax[0].boxplot(df['current_balance'])
+# ax[0].set_title("current_balance")
+# ax[1].boxplot(df['current_month_credit'])
+# ax[1].set_title("current_month_credit")
+# ax[2].boxplot(df['current_month_debit'])
+# ax[2].set_title("current_month_debit")
+# ax[3].boxplot(df['current_month_balance'])
+# ax[3].set_title("current_month_balance")
+# plt.show()
+# # #------------------
+
+# #Relation about (previous & current balance/credit/debit/mothly balance) & (Churn)  
+# fig = plt.figure(figsize=(7,7))
+# graph = sns.scatterplot(data=df, x='previous_month_end_balance', y='current_balance', hue='churn')
+# plt.show()
+# graph = sns.scatterplot(data=df, x='previous_month_credit', y='current_month_credit', hue='churn')
+# plt.show()
+# graph = sns.scatterplot(data=df, x='previous_month_debit', y='current_month_debit', hue='churn')
+# plt.show()
+# graph = sns.scatterplot(data=df, x='previous_month_balance', y='current_month_balance', hue='churn')
+# plt.show()
 
 
 # df.dropna(axis=0, inplace=True)
