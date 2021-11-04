@@ -6,6 +6,13 @@ import warnings
 from collections import Counter
 from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.cluster import KMeans, MeanShift
+from sklearn.mixture import GaussianMixture
+from sklearn.model_selection import cross_val_score
+
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=UserWarning)
 warnings.filterwarnings('ignore')
@@ -15,7 +22,6 @@ sns.set(style='white')
 def outlier_show(variable):
     sns.boxplot(df[variable])
     plt.show()
-
 
 # Extract the index of the row with outliers from the feature
 def outlier(df, feature):
@@ -104,6 +110,33 @@ print(str(df.isnull().sum()) + "\n")
 # Now change gender into category type
 df['gender'] = df['gender'].astype('category')
 
+non_outlier=['dependents',
+             'gender',
+             'occupation',
+             'city',
+             'customer_nw_category',
+             'branch_code',
+             'churn',
+             'last_transaction']
+
+# Show outlier value.
+outlier_list = df.columns.tolist()
+outlier_list = [x for x in outlier_list if x not in non_outlier]
+for i in outlier_list:
+    print(i)
+    #outlier_show(i)
+
+# Find outlier indexes
+outlier_index = outlier(df, outlier_list)
+
+# Deletion outlier values.
+df = df.drop(outlier_index, axis=0).reset_index(drop=True)
+df = df.drop(df[df['average_monthly_balance_prevQ2']<0].index, axis=0).reset_index(drop=True)
+
+for i in outlier_list:
+    print(i)
+    #outlier_show(i)
+
 col=[
     'current_balance',
     'previous_month_end_balance',
@@ -126,26 +159,60 @@ df['previous total income']=df[col[5]]-df[col[7]]-df[col[9]]
 df['current income to spending ratio']=(df[col[4]]*100)/(df[col[4]]+df[col[6]]+df[col[8]])
 df['previous income to spending ratio']=(df[col[5]]*100)/(df[col[5]]+df[col[7]]+df[col[9]])
 
-df=df.drop(['dependents'],axis=1)
-df=df.drop(['gender'],axis=1)
-df=df.drop(['occupation'],axis=1)
-df=df.drop(['city'],axis=1)
-df=df.drop(['customer_nw_category'],axis=1)
-df=df.drop(['branch_code'],axis=1)
-df=df.drop(['churn'],axis=1)
-df=df.drop(['last_transaction'],axis=1)
 
-"""
-# Show outlier value.
-outlier_list = df.columns
-for i in outlier_list:
-    print(i)
-    outlier_show(i)
+def encoder(encoder, df):
+    return encoder.fit_transform(df)
 
-# Find outlier indexes
-outlier_index = outlier(df, df.columns)
+def scaler(scaler, df):
+    return scaler.fit_transform(df)
 
-# Deletion outlier values.
-df = df.drop(outlier_index, axis=0).reset_index(drop=True)
-print(df)
-"""
+def findbest(best_n,pmax,pmin,jump):
+    if best_n == 1:
+        jump = (int)(jump / 2)
+        pmax = best_n + jump + 1
+    elif best_n + jump > pmax:
+        pmax = best_n + jump * 2 + 1
+        pmin = best_n + jump
+    else:
+        jump = (int)(jump / 2)
+        pmax = best_n + jump + 1
+        pmin = best_n - jump
+    return pmax,pmin,jump
+
+def classifications(df):
+    lbl=df['churn']
+    df=df.drop(['churn'],axis=1)
+
+    le = LabelEncoder()
+    df['occupation'] = encoder(le, df['occupation'])
+
+    st = StandardScaler()
+    df = scaler(st, df)
+
+    for p in range(1, 3):
+        pmin = 1
+        pmax = 14
+        jump = 4
+        best=0
+        best_n=0
+        start=0
+        while True:
+            for neighbor in range(pmin, pmax, jump):
+                model = KNeighborsClassifier(n_neighbors=neighbor, p=p)
+                score = cross_val_score(model, df, lbl, cv=5)
+                print("p="+str(p)+", n="+str(neighbor)+", score="+str(score.mean()))
+                if start==0:
+                    start=score.mean()
+                if best<score.mean():
+                    best=score.mean()
+                    best_n=neighbor
+            #if start * 1.0001 > best:
+            #    break;
+            if jump == 1:
+                break;
+            start = best
+            pmax,pmin,jump=findbest(best_n,pmax,pmin,jump)
+
+        print("p="+str(p)+", best n="+str(neighbor)+", score="+str(score.mean()))
+
+classifications(df)
