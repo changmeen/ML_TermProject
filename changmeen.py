@@ -166,14 +166,14 @@ def encoder(encoder, df):
 def scaler(scaler, df):
     return scaler.fit_transform(df)
 
-def findbest(best_n,pmax,pmin,jump):
-    if best_n == 1:
+def findbest(best_n,pmax,pmin,jump): #베스트 찾고 위치 조정
+    if best_n == 1: #best_n이 1일때, 1은 최소값이므로 점프값 조정하고 max값을 조정한다. 1~5 -> 1~3
         jump = (int)(jump / 2)
         pmax = best_n + jump + 1
-    elif best_n + jump > pmax:
+    elif best_n + jump > pmax: #best_n이 pmax값에 가장 가까운 값일때, min값이 best_n값으로 시작해서 다시 조정(상승곡선을 그릴때)
         pmax = best_n + jump * 2 + 1
         pmin = best_n + jump
-    else:
+    else: #중간에 최대값이 발견되서 조정할때, 1 4 7일때, 4가 최대값이면 4를 중심으로 3 4 5를 진행
         jump = (int)(jump / 2)
         pmax = best_n + jump + 1
         pmin = best_n - jump
@@ -199,20 +199,20 @@ def classifications(df):
         while True:
             for neighbor in range(pmin, pmax, jump):
                 model = KNeighborsClassifier(n_neighbors=neighbor, p=p)
-                score = cross_val_score(model, df, lbl, cv=5)
+                score = cross_val_score(model, df, lbl, cv=5) #kfold
                 print("p="+str(p)+", n="+str(neighbor)+", score="+str(score.mean()))
                 if start==0:
-                    start=score.mean()
+                    start=score.mean() #시작값
                 if best<score.mean():
-                    best=score.mean()
+                    best=score.mean() #최대값
                     best_n=neighbor
-            #if start * 1.0001 > best:
+            #if start * 1.0001 > best: #시작값보다 최대값이 K%보다 작을때 종료
             #    break;
-            if jump == 1:
+            if jump == 1: #베스트값 구하고 jump값이 1일때 종료 -> 만약 3 4 5 진행했다면 jump값이 1이므로 종료
                 break;
-            start = best
+            start = best #최소값 최대값이 바뀌었으니 베스트값을 시작값으로 하여 다시 비교
             pmax,pmin,jump=findbest(best_n,pmax,pmin,jump)
 
-        print("p="+str(p)+", best n="+str(neighbor)+", score="+str(score.mean()))
+        print("p="+str(p)+", best n="+str(neighbor)+", score="+str(score.mean())) #최대값 출력
 
-classifications(df)
+classifications(df)#호출호출
