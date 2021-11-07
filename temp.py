@@ -10,109 +10,111 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 df = pd.read_csv("C:/Users/MOS/Desktop/Banking_churn_prediction.csv")
 
-#Churn plot-------
-Churn_plot = df['churn'].value_counts().reset_index()
-Churn_plot.columns = ['churn', 'count']
-plt.figure(figsize=(7, 7))
-sns.countplot(x=df['churn'])
-plt.title('Rate of churn', fontsize=20)
-plt.xlabel('Churn')
-plt.ylabel('Count')
-plt.show() 
-#------------------
+# def numerical_vis_func(x):
+#     plt.hist(x,bins=10)
+#     plt.show()
+
+#6가지 column들 시각화 
+# column_name_numerical=['vintage','age','dependents','city','customer_nw_category','branch_code'] 
+
+# for i in range(len(column_name_numerical)):
+#     plt.title(column_name_numerical[i])
+#     plt.xlabel(column_name_numerical[i])    
+#     plt.ylabel('Count')
+#     if(i==2):
+#         list=[0,1,2,3,4,5]
+#         plt.hist(df['dependents'],list)
+#         plt.show()
+#         continue;
+#     if(i==4):
+#         list=[0,1,2,3,4,5]
+#         plt.hist(df['customer_nw_category'],list)
+#         plt.show()
+#         continue;
+#     numerical_vis_func(df[[column_name_numerical[i]]])
 
 
-#Occupation plot-------
-plt.figure(figsize=(7, 7))
-sns.countplot(x=df['occupation'])
-plt.title('Rate of occupation', fontsize=20)
-plt.xlabel('occupation')
-plt.ylabel('Count')
-plt.show() 
-#------------------
+#3가지 categorical data 시각화 
+# column_name_category=['gender','occupation','churn']
+# for i in range(len(column_name_category)):
+#     plt.title(column_name_category[i])
+#     plt.xlabel(column_name_category[i])    
+#     plt.ylabel('Count')
+#     sns.countplot(df[column_name_category[i]])
+#     plt.show() 
 
-#gender plot-------
-plt.figure(figsize=(7, 7))
-sns.countplot(x=df['gender'])
-plt.title('Rate of gender', fontsize=20)
-plt.xlabel('Gender')
-plt.ylabel('Count')
+#Current value cloumns들 시각화 
+#Current value visualization-------------------------------
+column_name_current=['current_balance','current_month_credit','current_month_debit','current_month_balance']    
+var_color_dict = {'current_balance': 'blue', 
+                  'current_month_credit': 'red', 
+                  'current_month_debit': 'yellow', 
+                  'current_month_balance': 'green'}
+
+i = [0, 0, 1, 1]
+j = [0, 1, 0, 1]
+
+f, axes = plt.subplots(2, 2, figsize=(8, 6),sharex=True)
+for var, i, j in zip(var_color_dict, i, j):
+    plt.xlabel(column_name_current[i])    
+    sns.distplot(df[column_name_current[i]],color = var_color_dict[var],ax = axes[i, j])
 plt.show()
-#------------------
+#--------------------------------------------
+#average value cloumns들 시각화 
+# #average mothly balance value visualization-------------------------------
+# column_name_average=['average_monthly_balance_prevQ','average_monthly_balance_prevQ2']    
+# figure = plt.figure(figsize=(18,6))
 
-# branch_code plot-------
-plt.bar(range(len(df['branch_code'])), df['branch_code'])
-plt.title('Rate of branch_code', fontsize=20)
-plt.xlabel('branch_code')
-plt.ylabel('Count')
-plt.show()
-# ------------------
-
-#age plot-------
-df[["age"]].hist(bins=10)
-plt.title('Rate of age', fontsize=20)
-plt.xlabel('age')
-plt.ylabel('Count')
-plt.show()
-#------------------
-
-
-# #find outlier---------
-# fig, ax = plt.subplots(1, 4, figsize=(16, 4))
-# ax[0].boxplot(df['current_balance'])
-# ax[0].set_title("current_balance")
-# ax[1].boxplot(df['current_month_credit'])
-# ax[1].set_title("current_month_credit")
-# ax[2].boxplot(df['current_month_debit'])
-# ax[2].set_title("current_month_debit")
-# ax[3].boxplot(df['current_month_balance'])
-# ax[3].set_title("current_month_balance")
+# ax1 = plt.subplot(1,2,1)
+# sns.distplot(df['average_monthly_balance_prevQ'], ax=ax1)
+# ax2 = plt.subplot(1,2,2)
+# sns.distplot(df['average_monthly_balance_prevQ2'], ax=ax2)    # 기본값은 kde(선) True, hist(막대) True
 # plt.show()
-# # #------------------
+# #--------------------------------------------
 
-# #Relation about (previous & current balance/credit/debit/mothly balance) & (Churn)  
-# fig = plt.figure(figsize=(7,7))
-# graph = sns.scatterplot(data=df, x='previous_month_end_balance', y='current_balance', hue='churn')
+#previous value cloumns들 시각화 
+# #previous value-------------------------------
+# column_name_previous=['previous_month_end_balance','previous_month_credit','previous_month_debit','previous_month_balance']    
+# var_color_dict2 = {'previous_month_end_balance': 'blue', 
+#                   'previous_month_credit': 'red', 
+#                   'previous_month_debit': 'yellow', 
+#                   'previous_month_balance': 'green'}
+
+# a = [0, 0, 1, 1]
+# b = [0, 1, 0, 1]
+
+# f, axes = plt.subplots(2, 2, figsize=(10, 8), sharex=True)
+# for var2, a, b in zip(var_color_dict2, a, b):
+#     sns.distplot(df[column_name_previous[a]],color = var_color_dict2[var2],ax = axes[a, b])
+
 # plt.show()
-# graph = sns.scatterplot(data=df, x='previous_month_credit', y='current_month_credit', hue='churn')
-# plt.show()
-# graph = sns.scatterplot(data=df, x='previous_month_debit', y='current_month_debit', hue='churn')
-# plt.show()
-# graph = sns.scatterplot(data=df, x='previous_month_balance', y='current_month_balance', hue='churn')
-# plt.show()
+# # ----------------------------------------
 
 
-# df.dropna(axis=0, inplace=True)
-# df.drop(['last_transaction'], axis=1, inplace=True)
-# feature_names = list(df.select_dtypes(object))
+#월단위로 추출한 Last transaction 시각화 
+# #----------Last transaction barplot with only month-----------------
+# # Creating an instance(data) of Datetimeindex class using last_transaction
+# temp_df=df.copy()
+# temp_df['last_transaction'] = pd.DatetimeIndex(temp_df['last_transaction'])
+
+# # There are only 3 values that last_transaction in 2018
+# # All other records are in 2019 so drop 2018 values
+# date = pd.DatetimeIndex(temp_df['last_transaction'])
+# indexNames = temp_df[date.year == 2018].index
+# temp_df.drop(indexNames, inplace=True)
+# temp_df = temp_df.reset_index(drop=True)
+
+# # Dealing with nan values in last_transaction
+# date = pd.DatetimeIndex(temp_df['last_transaction'])
+# temp_df['last_transaction'] = date.month
+# temp_df.dropna(axis=0,inplace=True)
+# print("last_transaction_month\n",temp_df['last_transaction'])
+
+# plt.title("Last transation_month")
+# plt.xlabel('Last transation_month')    
+# plt.ylabel('Count')
+# sns.countplot(temp_df['last_transaction'])
+# plt.show() 
+# #------------------------------------------------------
 
 
-# X = df.drop(['churn'], axis=1)
-# y = df['churn']
-# x = df.copy()
-
-
-# encoder = LabelEncoder()
-# data=pd.DataFrame()
-# x=x.reset_index(drop=True)  #index가 있는채로 인코딩하면 결측값이 생기므로 인덱스를 reset해주고 drop=True를 해서 다른 column으로 나오는것을 방지함
-# for i in feature_names:
-#     x[i] = encoder.fit_transform(x[i])
-# scaler = StandardScaler()
-# x = scaler.fit_transform(x)
-# df_new = pd.DataFrame(x)
-# df_new.columns = df.columns
-
-# X = df_new.drop(['churn'], axis=1)
-# y = df_new['churn']
-
-# selector = SelectKBest(score_func=f_classif, k=19)
-# fit = selector.fit(X, y)
-
-# dfcolumns = pd.DataFrame(X.columns)
-# dfscores = pd.DataFrame(fit.scores_)
-
-# featureScores = pd.concat([dfcolumns, dfscores], axis=1)
-# featureScores.columns = ['Spec', 'Score']
-
-
-# print(featureScores.nlargest(20, 'Score'))
