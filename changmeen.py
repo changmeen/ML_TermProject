@@ -13,6 +13,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.cluster import KMeans, MeanShift
 from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import cross_val_score
+from custom_ml import AutoML
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=UserWarning)
@@ -280,104 +281,72 @@ def encoder(encoder, df):
 def scaler(scaler, df):
     return scaler.fit_transform(df)
 
-def findbest(best, max, min, jump): #베스트 찾고 위치 조정
-    if best == 1: #best_n이 1일때, 1은 최소값이므로 점프값 조정하고 max값을 조정한다. 1~5 -> 1~3
-        jump = (int)(jump / 2)
-        max = best + jump + 1
-    elif best + jump > max: #best_n이 pmax값에 가장 가까운 값일때, min값이 best_n값으로 시작해서 다시 조정(상승곡선을 그릴때)
-        max = best + jump * 2 + 1
-        min = best
-    else: #중간에 최대값이 발견되서 조정할때, 1 4 7일때, 4가 최대값이면 4를 중심으로 3 4 5를 진행
-        jump = (int)(jump / 2)
-        max = best + jump + 1
-        min = best - jump
-    return max, min, jump
+def knn(df, lbl=None): # weight, p, neighbor
+    n_neighbors = list(range(1, 20, 4))
+    param = {
+        'weights': ['uniform', 'distance'],
+        'n_neighbors': [n_neighbors, 4],
+        'p': [1, 2]
 
-def knn(df, lbl):
-    weights=['uniform', 'distance']
-    w_best = 0
-    w_best_w = 0
-    w_best_p = 0
-    w_best_n = 0
-    for weight in weights:
-        p_best = 0 #p best score
-        p_best_p = 0 #p best p값
-        p_best_n = 0 #p best n값
-        for p in range(1, 3):
-            n_min = 1 #neighbor 시작값
-            n_max = 14 #neighbor 종료값
-            g_n_min = n_min #neighbor 그래프 x눈금 시작값
-            g_n_max = n_max #neighbor 그래프 x눈금 종료값
-            n_jump = 4 #neighbor 점프값
-            n_best = 0 #neighbor best score
-            n_best_n = 0 #neighbor best n값
-            n_base = 0 #neighbor 기준점 score
-            n_base_n = 0 #neighbor 기준점 n값
-            while True:
-                n_all_score = []
-                n_all_n = []
-                for neighbor in range(n_min, n_max, n_jump):
-                    if neighbor == n_base_n:  # n값이 base n값이면 이미 score값을 도출했으므로 continue
-                        n_all_score.append(n_base)
-                        n_all_n.append(n_base_n)
-                        continue
+    }
 
-                    if n_base_n == 0:  # 초기 base값 설정
-                        n_base_n = neighbor
+    t = KNeighborsClassifier()
+    temp = AutoML(t, param_grid=param, cv=5)
+    result,score,dict=temp.fit(df, lbl)
+    print(result)
+    print(score)
+    print(dict)
 
-                    model = KNeighborsClassifier(n_neighbors=neighbor, p=p, weights=weight)
-                    score = cross_val_score(model, df, lbl, cv=5)  # kfold #score값은 cv의 갯수만큼 존재하므로 평균값 필요시 mean()
-                    print(
-                        "Base n=" + str(n_base_n) + ", weight=" + str(weight) + ", p=" + str(p) + ", Current n=" + str(
-                            neighbor) + ", Score=" + str(
-                            score.mean()))
+def dt(df, lbl=None): # criterion, max_depth, splitter
+    max_depth=list(range(1,20,4))
+    max_depth.insert(0, None)
+    param = {
+        'criterion':['gini', 'entropy'],
+        'max_depth': [max_depth, 4],
+        'splitter':['best','random']
 
-                    n_all_score.append(score.mean())
-                    n_all_n.append(neighbor)
+    }
 
-                    if n_base == 0:  # 시작값
-                        n_base = score.mean()
+    t=DecisionTreeClassifier(random_state=42)
+    temp=AutoML(t,param_grid=param,cv=5)
+    result,score,dict=temp.fit(df,lbl)
+    print(result)
+    print(score)
+    print(dict)
 
-                    if n_best < score.mean():
-                        n_best = score.mean()  # 최대값
-                        n_best_n = neighbor
+def lr(df, lbl=None): # criterion, max_depth, splitter
+    max_depth=list(range(1,20,4))
+    max_depth.insert(0, None)
+    param = {
+        'solver':['newton-cg','lbfgs','sag','saga'],
+        'penalty':['none','l2'],
+        'C':[100,10,1,0.1,0.01]
+    }
 
-                n_all_score = sorted(n_all_score, key=lambda all_score: n_all_n)
-                n_all_n = sorted(n_all_n)
-                plt.plot(n_all_n, n_all_score, marker='o')
+    t=LogisticRegression(random_state=42)
+    temp=AutoML(t,param_grid=param,cv=5)
+    result,score,dict=temp.fit(df,lbl)
+    print(result)
+    print(score)
+    print(dict)
 
-                # if start * 1.0001 > best: #시작값보다 최대값이 K%보다 작을때 종료
-                #    break;
-                if n_jump == 1:  # 베스트값 구하고 jump값이 1일때 종료 -> 만약 3 4 5 진행했다면 jump값이 1이므로 종료
-                    break;
-                n_base = n_best  # 최소값 최대값이 바뀌었으니 베스트값을 시작값으로 하여 다시 비교
-                n_base_n = n_best_n
-                n_max, n_min, n_jump = findbest(n_best_n, n_max, n_min, n_jump)
-                if n_max > g_n_max: #그래프 x눈금 종료값 확장
-                    g_n_max = n_max
-                if n_min < g_n_min: #그래프 x눈금 시작값 확장
-                    g_n_min = n_min
+def kmeans(df, lbl=None): # weight, p, neighbor
+    n_init=list(range(1,20,4))
+    max_iter=list(range(1,400,64))
+    param = {
+        'n_clusters':[2],
+        'init':['k-means++','random'],
+        'n_init':[n_init,4],
+        'algorithm':['auto','full','elkan'],
+        'max_iter':[max_iter,64]
+    }
 
-            if p_best < n_best:
-                p_best = n_best  # 최대값
-                p_best_p = p
-                p_best_n = n_best_n
-
-            print("!weight=" + str(weight) + ", p=" + str(p) + ", Best n=" + str(n_best_n) + ", Best Score=" + str(n_best) + "!")  #p값일 때 최대값 출력
-
-            plt.xticks(range(g_n_min, g_n_max))
-            plt.show()
-
-        if w_best < p_best:
-            w_best = p_best  # 최대값
-            w_best_w = weight
-            w_best_p = p_best_p
-            w_best_n = p_best_n
-
-        print("@weight=" + str(weight) + ", Best p=" + str(p_best_p) + ", Best n=" + str(p_best_n) + ", Best Score=" + str(p_best) + "@")  #weight값일 때 최대값 출력
-        
-    print("#Best weight=" + str(w_best_w) + ", Best p=" + str(w_best_p) + ", Best n=" + str(w_best_n) + ", Best Score=" + str(
-        w_best) + "#")  #knn 최대값 출력
+    t = KMeans()
+    temp = AutoML(t, param_grid=param)
+    result, score, dict = temp.fit(df,lbl)
+    print(result)
+    print(score)
+    print(dict)
 
 
 def classifications(df):
@@ -391,5 +360,22 @@ def classifications(df):
     df = scaler(st, df)
 
     knn(df, lbl)
+    dt(df, lbl)
+    lr(df, lbl)
 
-classifications(df)#호출호출
+def clustering(df):
+    lbl = df['churn']
+    #data = df.drop(['churn'], axis=1)
+    data=df.copy()
+
+    le = LabelEncoder()
+    data['occupation'] = encoder(le, data['occupation'])
+
+    st = StandardScaler()
+    data = scaler(st, data)
+
+    kmeans(data)
+
+#classifications(df)#호출호출
+classifications(df)
+clustering(df)
