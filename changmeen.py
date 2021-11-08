@@ -350,13 +350,13 @@ def kmeans(df, lbl=None, e=0): # n_clusters, init, n_init, algorithm, max_iter
 
 def gm(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, max_iter
     n_init=list(range(1,20,4))
-    max_iter=list(range(1,10,8))
+    max_iter=list(range(1,400,64))
     param = {
         'n_components':[2],
-        #'covariance_type':['full','tied','diag','spherical'],
+        'covariance_type':['full','tied','diag','spherical'],
         'n_init':[n_init,4],
-        #'init_params':['kmeans','random'],
-        'max_iter':[max_iter,8]
+        'init_params':['kmeans','random'],
+        'max_iter':[max_iter,64]
     }
 
     t = GaussianMixture(random_state=42)
@@ -371,9 +371,9 @@ def meanshift(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_p
     max_iter=list(range(1,400,64))
     param = {
         'n_components':[2],
-        #'covariance_type':['full','tied','diag','spherical'],
+        'covariance_type':['full','tied','diag','spherical'],
         'n_init':[n_init,4],
-        #'init_params':['kmeans','random'],
+        'init_params':['kmeans','random'],
         'max_iter':[max_iter,64]
     }
 

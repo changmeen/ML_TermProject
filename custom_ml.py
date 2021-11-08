@@ -50,13 +50,9 @@ class AutoML:
             if best == 1: #best가 1이면 1~jump/2만큼 탐색
                 jump = (int)(jump / 2)
                 max = best + jump
-            elif best - jump * 2 > 0: #min값 조정(음수x)
-                min = best - jump * 2
-            elif best - jump > 0: #min값 조정(음수x)
-                min = best - jump
-            else: #min값 조정이 안될때 jump, max값 조정
+            else:
                 jump = (int)(jump / 2)
-                min = best
+                min = best - jump
                 max = best + jump
         elif best == max:  #best값이 max일때 탐색 범위 확장
             if self.e: #오차가 앱실론미만일때 best가 max값이면 범위 좁히기(확장x)
@@ -263,5 +259,9 @@ class AutoML:
     def fit(self, X, y = None):
         dict={}
         return self.create(dict,0,X,y)
-
-    #def fit(self, X, y=None):
+    
+    def predict(self, X, y= None):
+        if y is not None:
+            return self.estimator.predict(X,y)
+        else:
+            return self.estimator.predict(X)
