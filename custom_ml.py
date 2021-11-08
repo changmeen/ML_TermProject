@@ -19,7 +19,6 @@ class AutoML:
         self.jump={}
         self.e_value=e+1
         self.e=False
-        self.min=0
 
     def dict_keys(self): #입력받은 파라미터들의 key값들 불러오기
         return list(self.param_grid.keys())
@@ -51,22 +50,14 @@ class AutoML:
             if best == 1: #best가 1이면 1~jump/2만큼 탐색
                 jump = (int)(jump / 2)
                 max = best + jump
-            elif self.min>=best:
-                if best - jump * 2 > 0:  # min값 조정(음수x)
-                    min = best - jump * 2
-                elif best - jump > 0:  # min값 조정(음수x)
-                    min = best - jump
-                else:  # min값 조정이 안될때 jump, max값 조정
-                    jump = (int)(jump / 2)
-                    min = best
-                    max = best + jump
-            else:
+            elif best - jump * 2 > 0: #min값 조정(음수x)
+                min = best - jump * 2
+            elif best - jump > 0: #min값 조정(음수x)
+                min = best - jump
+            else: #min값 조정이 안될때 jump, max값 조정
                 jump = (int)(jump / 2)
+                min = best
                 max = best + jump
-                if min-jump>0:
-                    min = best - jump
-                else:
-                    min = best
         elif best == max:  #best값이 max일때 탐색 범위 확장
             if self.e: #오차가 앱실론미만일때 best가 max값이면 범위 좁히기(확장x)
                 jump = (int)(jump / 2)
@@ -148,7 +139,6 @@ class AutoML:
                 if args[k][i]!=None: #None값이 아닐때 min max값 설정
                     if min_i==-1:
                         min_i=args[k][i]
-                        self.min=min_i
                     if max_i==-1:
                         max_i=args[k][i]
                     if min_i>args[k][i]:
@@ -183,10 +173,6 @@ class AutoML:
                                 if best_i in more:
                                     more.remove(best_i) #이미 계산된 파라미터 제거(best 파라미터)
                                 more=filter(lambda a: a>0,more)
-
-                                if self.min>min(more):
-                                    self.min=min(more)
-
                                 for w in more: #추가된 파라미터의 score 계산
                                     q = []
                                     dict[keys[k]] = w
@@ -245,10 +231,6 @@ class AutoML:
                                 if best_i in more:
                                     more.remove(best_i)  # 이미 계산된 파라미터 제거(best 파라미터)
                                 more = filter(lambda a: a > 0, more)
-
-                                if self.min>min(more):
-                                    self.min=min(more)
-
                                 for w in more:
                                     q = []
                                     dict[keys[k]] = w
