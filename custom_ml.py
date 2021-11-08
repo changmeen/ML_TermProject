@@ -11,12 +11,15 @@ class AutoML:
     def __init__(self, #AutoML 파라미터 받기
                  estimator,
                  param_grid,
-                 cv=None):
+                 cv=None,
+                 e=0):
         self.estimator=estimator #최상위 파라미터들 -> 언제든 self.로 불러올 수 있다.
         self.cv=cv
         self.param_grid=param_grid
         self.jump={}
-        self.dict=[]
+        self.e_value=e+1
+        self.e=False
+        self.min=0
 
     def dict_keys(self): #입력받은 파라미터들의 key값들 불러오기
         return list(self.param_grid.keys())
@@ -48,17 +51,31 @@ class AutoML:
             if best == 1: #best가 1이면 1~jump/2만큼 탐색
                 jump = (int)(jump / 2)
                 max = best + jump
-            elif best - jump * 2 > 0: #min값 조정(음수x)
-                min = best - jump * 2
-            elif best - jump > 0: #min값 조정(음수x)
-                min = best - jump
-            else: #min값 조정이 안될때 jump, max값 조정
+            elif self.min>=best:
+                if best - jump * 2 > 0:  # min값 조정(음수x)
+                    min = best - jump * 2
+                elif best - jump > 0:  # min값 조정(음수x)
+                    min = best - jump
+                else:  # min값 조정이 안될때 jump, max값 조정
+                    jump = (int)(jump / 2)
+                    min = best
+                    max = best + jump
+            else:
                 jump = (int)(jump / 2)
-                min = best
                 max = best + jump
+                if min-jump>0:
+                    min = best - jump
+                else:
+                    min = best
         elif best == max:  #best값이 max일때 탐색 범위 확장
-            max = best + jump * 2
-            min = best + jump
+            if self.e: #오차가 앱실론미만일때 best가 max값이면 범위 좁히기(확장x)
+                jump = (int)(jump / 2)
+                max = best + jump
+                min = best - jump
+                self.e = False
+            else:
+                max = best + jump * 2
+                min = best + jump
         else:  # best가 max보다 작고 min값보다 클때
             jump = (int)(jump / 2)
             max = best + jump
@@ -77,6 +94,8 @@ class AutoML:
             clus = True
         elif 'MeanShift' in str(model):
             clus = True
+
+        print(dict)
         if self.cv is not None:
             if y is not None:
                 score = cross_val_score(model, X, y, cv=self.cv).mean()
@@ -84,22 +103,19 @@ class AutoML:
                 score = cross_val_score(model, X, cv=self.cv).mean()
         else:
             if y is not None:
-                print(model)
                 model.fit(X, y)
                 if clus:
                     score = silhouette_score(X, y)
                 else:
                     score = model.score(X, y)
-                print(score)
             else:
-                print(model)
                 model.fit(X)
                 if clus:
                     pred = model.predict(X)
                     score = silhouette_score(X,pred)
                 else:
                     score = model.score(X)
-                print(score)
+        print(score)
 
         return score
 
@@ -118,6 +134,8 @@ class AutoML:
         t=[] #파라미터 구조도
         min_i=-1 #파라미터 시작값
         max_i=-1 #파라미터 종료값
+        
+        e=False
         for i in range(len(args[k])):
 
             q=[] #temp 구조도
@@ -130,17 +148,28 @@ class AutoML:
                 if args[k][i]!=None: #None값이 아닐때 min max값 설정
                     if min_i==-1:
                         min_i=args[k][i]
+                        self.min=min_i
                     if max_i==-1:
                         max_i=args[k][i]
                     if min_i>args[k][i]:
                         min_i=args[k][i]
                     if max_i<args[k][i]:
                         max_i=args[k][i]
+                        
+                if score>=best: #최대값 갱신
+                    best_i = args[k][i]
 
-                if score>best: #최대값 갱신
-                    best=score
-                    best_i=args[k][i]
-                    best_dict=dict
+                    if best*self.e_value>score: #최대값 갱신할때 기존 최대값과 새로운 최대값의 오차가 앱실론 미만일때
+                        if e: #이미 앱실론 미만인 경우가 존재했으면 2번째 이후는 더이상 계산하는게 의미가 없다고 판단
+                            i = len(args[k]) - 1 #건너뛰기
+                            e=False #초기화
+                        else: #처음 발견된 경우 다음 것도 확인
+                            e=True
+                    else: #오차가 앱실론 미만일때 초기화
+                        e=False
+                    best = score
+                    best_dict = dict
+
 
                 q.append(score) #파라미터의 score값 저장
                 t.append(q) #각 파라미터의 score값 저장
@@ -148,16 +177,36 @@ class AutoML:
                     if best_i != None: #best 파라미터가 None이 아니며
                         if jump != None: #jump값이 존재할때
                             while jump>1: #범위를 좁혀가며 최적의 값 탐색
+                                self.e = e
                                 min_i, max_i, jump = self.findbest(best_i, min_i, max_i, jump) #min max jump값 조정
                                 more = list(range(min_i, max_i + 1, jump)) #추가된 파라미터값
                                 if best_i in more:
                                     more.remove(best_i) #이미 계산된 파라미터 제거(best 파라미터)
                                 more=filter(lambda a: a>0,more)
+
+                                if self.min>min(more):
+                                    self.min=min(more)
+
                                 for w in more: #추가된 파라미터의 score 계산
                                     q = []
                                     dict[keys[k]] = w
                                     score = self.cal(dict, X, y)
-                                    if score > best:
+                                    if score >= best:
+                                        if best * self.e_value >= score:  # 최대값 갱신할때 기존 최대값과 새로운 최대값의 오차가 앱실론 미만일때
+                                            if e:  # 이미 앱실론 미만인 경우가 존재했으면 2번째 이후는 더이상 계산하는게 의미가 없다고 판단
+                                                e = False  # 초기화
+                                                best = score
+                                                best_i = w
+                                                best_dict = dict.copy()
+
+                                                q.append(w)
+                                                q.append(score)
+                                                t.append(q)
+                                                break
+                                            else:  # 처음 발견된 경우 다음 것도 확인
+                                                e = True
+                                        else:  # 오차가 앱실론 미만일때 초기화
+                                            e = False
                                         best = score
                                         best_i = w
                                         best_dict = dict.copy()
@@ -165,13 +214,22 @@ class AutoML:
                                     q.append(w)
                                     q.append(score)
                                     t.append(q)
-
+                    break
             else:
                 result,score,dict = self.create(dict, k + 1, X, y) #파라미터 구조도 생성 및 score 계산-> 재귀
-                if best<score: #구조도 맨밑에 위치한 파라미터가 아닐때 해당 파라미터의 best값 갱신
+                if best<=score: #구조도 맨밑에 위치한 파라미터가 아닐때 해당 파라미터의 best값 갱신
                     best_i = args[k][i]
-                    best=score
-                    best_dict=dict
+
+                    if best*self.e_value>score: #최대값 갱신할때 기존 최대값과 새로운 최대값의 오차가 앱실론 미만일때
+                        if e: #이미 앱실론 미만인 경우가 존재했으면 2번째 이후는 더이상 계산하는게 의미가 없다고 판단
+                            i = len(args[k]) - 1 #건너뛰기
+                            e=False #초기화
+                        else: #처음 발견된 경우 다음 것도 확인
+                            e=True
+                    else: #오차가 앱실론 미만일때 초기화
+                        e=False
+                    best = score
+                    best_dict = dict
 
                 q.append(result)
                 t.append(q)
@@ -180,16 +238,33 @@ class AutoML:
                     if best_i != None:
                         if jump != None:
                             while jump>1:
+                                self.e = e
+                                print(best_i)
                                 min_i, max_i, jump = self.findbest(best_i, min_i, max_i, jump)
                                 more = list(range(min_i, max_i + 1, jump))
                                 if best_i in more:
                                     more.remove(best_i)  # 이미 계산된 파라미터 제거(best 파라미터)
                                 more = filter(lambda a: a > 0, more)
+
+                                if self.min>min(more):
+                                    self.min=min(more)
+
                                 for w in more:
                                     q = []
                                     dict[keys[k]] = w
                                     result, score, dict = self.create(dict, k + 1, X, y) #추가된 파라미터의 구조도 생성 및 score 계산
-                                    if best < score:
+                                    if best <= score:
+                                        if best * self.e_value >= score:  # 최대값 갱신할때 기존 최대값과 새로운 최대값의 오차가 앱실론 미만일때
+                                            if e:  # 이미 앱실론 미만인 경우가 존재했으면 2번째 이후는 더이상 계산하는게 의미가 없다고 판단
+                                                e = False  # 초기화
+                                                q.append(w)
+                                                q.append(result)
+                                                t.append(q)
+                                                break;
+                                            else:  # 처음 발견된 경우 다음 것도 확인
+                                                e = True
+                                        else:  # 오차가 앱실론 미만일때 초기화
+                                            e = False
                                         best_i = w
                                         best = score
                                         best_dict = dict.copy()
@@ -197,8 +272,8 @@ class AutoML:
                                     q.append(w)
                                     q.append(result)
                                     t.append(q)
-
-
+                    break
+        self.e=False
         return t,best,best_dict #하위 파라미터의 생성된 파라미터 구조도, best값과 best 파라미터값들을 상위 파라미터에 전송
 
 

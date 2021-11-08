@@ -281,7 +281,7 @@ def encoder(encoder, df):
 def scaler(scaler, df):
     return scaler.fit_transform(df)
 
-def knn(df, lbl=None): # weight, p, neighbor
+def knn(df, lbl=None, e=0): # weight, p, neighbor
     n_neighbors = list(range(1, 20, 4))
     param = {
         'weights': ['uniform', 'distance'],
@@ -291,13 +291,13 @@ def knn(df, lbl=None): # weight, p, neighbor
     }
 
     t = KNeighborsClassifier()
-    temp = AutoML(t, param_grid=param, cv=5)
+    temp = AutoML(t, param_grid=param, cv=5,e=e)
     result,score,dict=temp.fit(df, lbl)
     print(result)
     print(score)
     print(dict)
 
-def dt(df, lbl=None): # criterion, max_depth, splitter
+def dt(df, lbl=None, e=0): # criterion, max_depth, splitter
     max_depth=list(range(1,20,4))
     max_depth.insert(0, None)
     param = {
@@ -308,13 +308,13 @@ def dt(df, lbl=None): # criterion, max_depth, splitter
     }
 
     t=DecisionTreeClassifier(random_state=42)
-    temp=AutoML(t,param_grid=param,cv=5)
+    temp=AutoML(t,param_grid=param,cv=5,e=e)
     result,score,dict=temp.fit(df,lbl)
     print(result)
     print(score)
     print(dict)
 
-def lr(df, lbl=None): # criterion, max_depth, splitter
+def lr(df, lbl=None, e=0): # solver, penalty, C
     max_depth=list(range(1,20,4))
     max_depth.insert(0, None)
     param = {
@@ -324,25 +324,61 @@ def lr(df, lbl=None): # criterion, max_depth, splitter
     }
 
     t=LogisticRegression(random_state=42)
-    temp=AutoML(t,param_grid=param,cv=5)
+    temp=AutoML(t,param_grid=param,cv=5,e=e)
     result,score,dict=temp.fit(df,lbl)
     print(result)
     print(score)
     print(dict)
 
-def kmeans(df, lbl=None): # weight, p, neighbor
+def kmeans(df, lbl=None, e=0): # n_clusters, init, n_init, algorithm, max_iter
     n_init=list(range(1,20,4))
     max_iter=list(range(1,400,64))
     param = {
         'n_clusters':[2],
         'init':['k-means++','random'],
         'n_init':[n_init,4],
-        'algorithm':['auto','full','elkan'],
+        'algorithm':['full','elkan'],
         'max_iter':[max_iter,64]
     }
 
-    t = KMeans()
-    temp = AutoML(t, param_grid=param)
+    t = KMeans(random_state=42)
+    temp = AutoML(t, param_grid=param,e=e)
+    result, score, dict = temp.fit(df,lbl)
+    print(result)
+    print(score)
+    print(dict)
+
+def gm(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, max_iter
+    n_init=list(range(1,20,4))
+    max_iter=list(range(1,10,8))
+    param = {
+        'n_components':[2],
+        #'covariance_type':['full','tied','diag','spherical'],
+        'n_init':[n_init,4],
+        #'init_params':['kmeans','random'],
+        'max_iter':[max_iter,8]
+    }
+
+    t = GaussianMixture(random_state=42)
+    temp = AutoML(t, param_grid=param,e=e)
+    result, score, dict = temp.fit(df,lbl)
+    print(result)
+    print(score)
+    print(dict)
+
+def meanshift(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, max_iter
+    n_init=list(range(1,20,4))
+    max_iter=list(range(1,400,64))
+    param = {
+        'n_components':[2],
+        #'covariance_type':['full','tied','diag','spherical'],
+        'n_init':[n_init,4],
+        #'init_params':['kmeans','random'],
+        'max_iter':[max_iter,64]
+    }
+
+    t = GaussianMixture(random_state=42)
+    temp = AutoML(t, param_grid=param,e=e)
     result, score, dict = temp.fit(df,lbl)
     print(result)
     print(score)
@@ -359,9 +395,11 @@ def classifications(df):
     st = StandardScaler()
     df = scaler(st, df)
 
-    knn(df, lbl)
-    dt(df, lbl)
-    lr(df, lbl)
+    e=0.01
+
+    knn(df, lbl, e)
+    dt(df, lbl, e)
+    lr(df, lbl, e)
 
 def clustering(df):
     lbl = df['churn']
@@ -373,9 +411,10 @@ def clustering(df):
 
     st = StandardScaler()
     data = scaler(st, data)
+    e = 0.01
+    #kmeans(data,e=e)
+    gm(data,e=e)
 
-    kmeans(data)
+#classifications(df)
 
-#classifications(df)#호출호출
-classifications(df)
 clustering(df)
