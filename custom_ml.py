@@ -254,14 +254,7 @@ class AutoML:
         self.e=False
         return t,best,best_dict #하위 파라미터의 생성된 파라미터 구조도, best값과 best 파라미터값들을 상위 파라미터에 전송
 
-
-
     def fit(self, X, y = None):
         dict={}
         return self.create(dict,0,X,y)
-    
-    def predict(self, X, y= None):
-        if y is not None:
-            return self.estimator.predict(X,y)
-        else:
-            return self.estimator.predict(X)
+

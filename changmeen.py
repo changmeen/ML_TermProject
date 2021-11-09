@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import plotly.express as px
 import warnings
 from collections import Counter
 from sklearn.feature_selection import SelectKBest, f_classif
@@ -13,6 +12,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.cluster import KMeans, MeanShift
 from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import cross_val_score
+from sklearn.metrics import confusion_matrix, classification_report, roc_curve
 from custom_ml import AutoML
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -274,7 +274,6 @@ df['previous total income']=df[col[5]]-df[col[7]]-df[col[9]]
 df['current income to spending ratio']=(df[col[4]]*100)/(df[col[4]]+df[col[6]]+df[col[8]])
 df['previous income to spending ratio']=(df[col[5]]*100)/(df[col[5]]+df[col[7]]+df[col[9]])
 
-
 def encoder(encoder, df):
     return encoder.fit_transform(df)
 
@@ -287,15 +286,22 @@ def knn(df, lbl=None, e=0): # weight, p, neighbor
         'weights': ['uniform', 'distance'],
         'n_neighbors': [n_neighbors, 4],
         'p': [1, 2]
-
     }
 
     t = KNeighborsClassifier()
     temp = AutoML(t, param_grid=param, cv=5,e=e)
     result,score,dict=temp.fit(df, lbl)
+
+    #최적의 파라미터가 저장된 dict를 이용하여 모델 생성후 pred
+    t1 = KNeighborsClassifier(weights=dict['weights'], n_neighbors=dict['n_neighbors'], p= dict['p'])
+    t1.fit(df,lbl)
+    pred = t1.predict(df)
+
     print(result)
     print(score)
     print(dict)
+
+    return pred, t1
 
 def dt(df, lbl=None, e=0): # criterion, max_depth, splitter
     max_depth=list(range(1,20,4))
@@ -304,15 +310,21 @@ def dt(df, lbl=None, e=0): # criterion, max_depth, splitter
         'criterion':['gini', 'entropy'],
         'max_depth': [max_depth, 4],
         'splitter':['best','random']
-
     }
 
     t=DecisionTreeClassifier(random_state=42)
     temp=AutoML(t,param_grid=param,cv=5,e=e)
     result,score,dict=temp.fit(df,lbl)
+
+    t1 = DecisionTreeClassifier(criterion=dict['criterion'], max_depth=dict['max_depth'],
+                                splitter=dict['splitter'], random_state=42)
+    t1.fit(df, lbl)
+    pred = t1.predict(df)
+
     print(result)
     print(score)
     print(dict)
+    return pred, t1
 
 def lr(df, lbl=None, e=0): # solver, penalty, C
     max_depth=list(range(1,20,4))
@@ -326,9 +338,15 @@ def lr(df, lbl=None, e=0): # solver, penalty, C
     t=LogisticRegression(random_state=42)
     temp=AutoML(t,param_grid=param,cv=5,e=e)
     result,score,dict=temp.fit(df,lbl)
+
+    t1 = LogisticRegression(solver=dict['solver'], penalty=dict['penalty'],C=dict['C'], random_state=42)
+    t1.fit(df, lbl)
+    pred = t1.predict(df)
+
     print(result)
     print(score)
     print(dict)
+    return pred, t1
 
 def kmeans(df, lbl=None, e=0): # n_clusters, init, n_init, algorithm, max_iter
     n_init=list(range(1,20,4))
@@ -380,6 +398,7 @@ def meanshift(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_p
     t = GaussianMixture(random_state=42)
     temp = AutoML(t, param_grid=param,e=e)
     result, score, dict = temp.fit(df,lbl)
+
     print(result)
     print(score)
     print(dict)
@@ -397,9 +416,37 @@ def classifications(df):
 
     e=0.01
 
-    knn(df, lbl, e)
-    dt(df, lbl, e)
-    lr(df, lbl, e)
+    pred1, model1= knn(df, lbl, e)
+    pred2, model2 = dt(df, lbl, e)
+    pred3, model3 = lr(df, lbl, e)
+
+    list_pred = [pred1, pred2, pred3]
+    model_names = ['KNN', 'DecisionTree', 'Logistic Regression']
+
+    # 각 모델마다 confusion matrix와 classification report 생성
+    for i, pred in enumerate(list_pred):
+        print("The confusion matrix and classification report of", model_names[i])
+        print(pd.DataFrame(confusion_matrix(lbl, pred)))
+        print(classification_report(lbl, pred, target_names= ['Churn', 'Not Churn']))
+        print('\n')
+
+    model_list = [model1, model2, model3]
+    Color = ['red','blue','green']
+    plt.title("Roc Curve", fontsize =10)
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+
+    # 3개 모델 ROC CURVE 그래프 생성
+    for i, model in enumerate(model_list):
+        prob = model.predict_proba(df)
+        prob_positive = prob[:, 1]
+        fpr, tpr, threshold = roc_curve(lbl, prob_positive)
+        plt.plot(fpr, tpr, color = Color[i])
+        plt.gca().legend(model_names, loc='lower right', frameon=True)
+
+    plt.plot([0, 1], [0, 1], color='black', linestyle='--')
+    plt.show()
+
 
 def clustering(df):
     lbl = df['churn']
@@ -415,6 +462,5 @@ def clustering(df):
     #kmeans(data,e=e)
     gm(data,e=e)
 
-#classifications(df)
-
-clustering(df)
+classifications(df)
+#clustering(df)
