@@ -1,3 +1,4 @@
+from matplotlib import pyplot as plt
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
@@ -86,7 +87,7 @@ class AutoML:
 
         self.clus=clus
 
-        print(dict)
+        #print(dict)
         if self.cv is not None:
             if y is not None:
                 score = cross_val_score(model, X, y, cv=self.cv).mean()
@@ -107,7 +108,7 @@ class AutoML:
                     score = silhouette_score(X,pred)
                 else:
                     score = model.score(X)
-        print(score)
+        #print(score)
 
         return score
 
@@ -126,7 +127,10 @@ class AutoML:
         t=[] #파라미터 구조도
         min_i=-1 #파라미터 시작값
         max_i=-1 #파라미터 종료값
-        
+
+        visualize=[] #시각화
+        vi_total = [] #범위 확장하거나 축소시 구분을 위함
+
         e=False
         for i in range(len(args[k])):
 
@@ -161,10 +165,16 @@ class AutoML:
                     best = score
                     best_dict = dict
 
-
                 q.append(score) #파라미터의 score값 저장
                 t.append(q) #각 파라미터의 score값 저장
+
+                visualize.append(q)
+
                 if i==len(args[k])-1: #파라미터 score를 모두 구했을 때
+
+                    vi_total.append(visualize) #구분을 위해 저장
+                    visualize=[] #초기화
+
                     if best_i != None: #best 파라미터가 None이 아니며
                         if jump != None: #jump값이 존재할때
                             while jump>1: #범위를 좁혀가며 최적의 값 탐색
@@ -175,6 +185,11 @@ class AutoML:
                                 if best_i in more:
                                     more.remove(best_i) #이미 계산된 파라미터 제거(best 파라미터)
                                 more=filter(lambda a: a>0,more)
+
+                                temp_best=[best_i,best] #best값을 제외하고 계산하였으므로 best값 추가
+                                visualize.append(temp_best)
+
+                                e = False
                                 for w in more: #추가된 파라미터의 score 계산
                                     q = []
                                     dict[keys[k]] = w
@@ -187,6 +202,8 @@ class AutoML:
                                                 q.append(w)
                                                 q.append(score)
                                                 t.append(q)
+
+                                                visualize.append(q)
                                                 break
                                             else:  # 처음 발견된 경우 다음 것도 확인
                                                 e = True
@@ -198,6 +215,21 @@ class AutoML:
                                     q.append(w)
                                     q.append(score)
                                     t.append(q)
+
+                                    visualize.append(q)
+
+                                try:
+                                    visualize = sorted(visualize, key=lambda visualize: visualize[0]) #섞인 파라미터 값들을 기준으로 score도 같이 sorted [13, 17, 15] -> [13, 15, 17]
+                                except: #오류발생시
+                                    for v in range(len(visualize)):
+                                        if visualize[v][0] is None: #None을 0으로 치환
+                                            visualize[v][0]=0
+                                            visualize = sorted(visualize, key=lambda visualize: visualize[0])
+                                            break
+
+                                vi_total.append(visualize)
+                                visualize = []
+
                     break
             else:
                 result,score,dict = self.create(dict, k + 1, X, y) #파라미터 구조도 생성 및 score 계산-> 재귀
@@ -218,7 +250,14 @@ class AutoML:
                 q.append(result)
                 t.append(q)
 
+                temp_w = [args[k][i], score]
+                visualize.append(temp_w)
+
                 if i==len(args[k])-1:
+
+                    vi_total.append(visualize)
+                    visualize = []
+
                     if best_i != None:
                         if jump != None:
                             while jump>1:
@@ -228,6 +267,11 @@ class AutoML:
                                 if best_i in more:
                                     more.remove(best_i)  # 이미 계산된 파라미터 제거(best 파라미터)
                                 more = filter(lambda a: a > 0, more)
+
+                                temp_best = [best_i, best]
+                                visualize.append(temp_best)
+
+                                e=False
                                 for w in more:
                                     q = []
                                     dict[keys[k]] = w
@@ -239,6 +283,10 @@ class AutoML:
                                                 q.append(w)
                                                 q.append(result)
                                                 t.append(q)
+
+                                                temp_w = [w, score]
+                                                visualize.append(temp_w)
+
                                                 break;
                                             else:  # 처음 발견된 경우 다음 것도 확인
                                                 e = True
@@ -251,16 +299,67 @@ class AutoML:
                                     q.append(w)
                                     q.append(result)
                                     t.append(q)
+
+                                    temp_w = [w, score]
+                                    visualize.append(temp_w)
+
+                                try:
+                                    visualize = sorted(visualize, key=lambda visualize: visualize[0])  # 섞인 파라미터 값들을 기준으로 score도 같이 sorted [13, 17, 15] -> [13, 15, 17]
+                                except:  # 오류발생시
+                                    for v in range(len(visualize)):
+                                        if visualize[v][0] is None:  # None을 0으로 치환
+                                            visualize[v][0] = 0
+                                            visualize = sorted(visualize, key=lambda visualize: visualize[0])
+                                            break
+
+
+                                vi_total.append(visualize)
+                                visualize = []
                     break
         self.e=False
         self.best_dict=best_dict
+
+
+        xticks=[] #눈금
+        for v in range(len(vi_total)): #시각화를 위해 파라미터값과 score값 분리
+            vi_x=[] #파라미터 값
+            vi_y=[] #score값
+            for temp in range(len(vi_total[v])):
+                vi_x.append(vi_total[v][temp][0])
+                vi_y.append(vi_total[v][temp][1])
+                xticks.append(vi_total[v][temp][0])
+            plt.plot(vi_x, vi_y, marker='o',markersize=5)
+        title_dict=best_dict.copy()
+        temp_k=k
+
+        xticks=sorted(list(set(xticks))) #눈금 중복 제거 및 정렬
+
+        while True: #best_dict를 복사하고 상위 파라미터까지만 title로 함.
+            try:
+                del(title_dict[keys[temp_k]])
+            except:
+                break
+            temp_k=temp_k+1
+
+
+        plt.title(str(self.estimator)+" "+str(title_dict))
+        plt.xlabel(keys[k])
+        plt.ylabel('Score')
+        plt.xticks(xticks)
+        plt.scatter(best_i, best, marker='*', s=100,zorder=100000,color='r')  # best값 따로 표기
+        plt.show()
+
+        if k!=0:
+            print("Base Parameter : {}".format(title_dict))
+        print("Learning Parameter : {}".format(keys[k]))
+        print("Parameter Best Score : {}, {} : {}\n".format(best,keys[k],best_i))
+
         return t,best,best_dict #하위 파라미터의 생성된 파라미터 구조도, best값과 best 파라미터값들을 상위 파라미터에 전송
 
     def fit(self, X, y = None):
         dict={}
         return self.create(dict,0,X,y)
 
-    #
     def predict(self,X,y=None):
         base_estimator = clone(self.estimator)
         model = clone(base_estimator)

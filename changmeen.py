@@ -285,11 +285,12 @@ def knn(df, lbl=None, e=0): # weight, p, neighbor
     n_neighbors = list(range(1, 20, 4))
     param = {
         'weights': ['uniform', 'distance'],
-        'n_neighbors': [n_neighbors, 4],
-        'p': [1, 2]
+        'p': [1, 2],
+        'n_neighbors': [n_neighbors, 4]
     }
 
     t = KNeighborsClassifier()
+
     temp = AutoML(t, param_grid=param, cv=5,e=e)
     result,score,dict=temp.fit(df, lbl)
 
@@ -297,9 +298,10 @@ def knn(df, lbl=None, e=0): # weight, p, neighbor
 
     pred, model=temp.predict(df,lbl)
 
-    print(result)
-    print(score)
-    print(dict)
+    print("---------{}---------".format(temp.estimator))
+    print("Best Parameter : {}".format(dict))
+    print("Best Score : {}\n".format(score))
+
     return pred, model
 
 def dt(df, lbl=None, e=0): # criterion, max_depth, splitter
@@ -307,19 +309,22 @@ def dt(df, lbl=None, e=0): # criterion, max_depth, splitter
     max_depth.insert(0, None)
     param = {
         'criterion':['gini', 'entropy'],
-        'max_depth': [max_depth, 4],
-        'splitter':['best','random']
+        'splitter':['best','random'],
+        'max_depth': [max_depth, 4]
     }
 
     t=DecisionTreeClassifier(random_state=42)
+    print("---------{}---------".format(t))
+
     temp=AutoML(t,param_grid=param,cv=5,e=e)
     result,score,dict=temp.fit(df,lbl)
 
     pred, model = temp.predict(df, lbl)
 
-    print(result)
-    print(score)
-    print(dict)
+    print("---------{}---------".format(temp.estimator))
+    print("Best Parameter : {}".format(dict))
+    print("Best Score : {}\n".format(score))
+
     return pred, model
 
 def lr(df, lbl=None, e=0): # solver, penalty, C
@@ -330,14 +335,17 @@ def lr(df, lbl=None, e=0): # solver, penalty, C
     }
 
     t=LogisticRegression(random_state=42)
+    print("---------{}---------".format(t))
+
     temp=AutoML(t,param_grid=param,cv=5,e=e)
     result,score,dict=temp.fit(df,lbl)
 
     pred, model = temp.predict(df, lbl)
 
-    print(result)
-    print(score)
-    print(dict)
+    print("---------{}---------".format(temp.estimator))
+    print("Best Parameter : {}".format(dict))
+    print("Best Score : {}\n".format(score))
+
     return pred, model
 
 def kmeans(df, lbl=None, e=0): # n_clusters, init, n_init, algorithm, max_iter
@@ -350,13 +358,15 @@ def kmeans(df, lbl=None, e=0): # n_clusters, init, n_init, algorithm, max_iter
     }
 
     t = KMeans(random_state=42)
+    print("---------{}---------".format(t))
+
     temp = AutoML(t, param_grid=param,e=e)
     result, score, dict = temp.fit(df,lbl)
     pred, model = temp.predict(df, lbl)
 
-    print(result)
-    print(score)
-    print(dict)
+    print("---------{}---------".format(temp.estimator))
+    print("Best Parameter : {}".format(dict))
+    print("Best Score : {}\n".format(score))
 
     return pred, model
 
@@ -370,18 +380,19 @@ def gm(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, m
     }
 
     t = GaussianMixture(random_state=42)
+    print("---------{}---------".format(t))
+
     temp = AutoML(t, param_grid=param,e=e)
     result, score, dict = temp.fit(df,lbl)
     pred, model = temp.predict(df, lbl)
 
-    print(result)
-    print(score)
-    print(dict)
+    print("---------{}---------".format(temp.estimator))
+    print("Best Parameter : {}".format(dict))
+    print("Best Score : {}\n".format(score))
 
     return pred, model
 
 def meanshift(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, max_iter
-    n_init=list(range(1,20,4))
     max_iter=list(range(1,200,32))
     param = {
         'n_components':[2],
@@ -391,14 +402,16 @@ def meanshift(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_p
     }
 
     t = GaussianMixture(random_state=42)
+    print("---------{}---------".format(t))
+
     temp = AutoML(t, param_grid=param,e=e)
     result, score, dict = temp.fit(df,lbl)
 
     pred, model = temp.predict(df, lbl)
 
-    print(result)
-    print(score)
-    print(dict)
+    print("---------{}---------".format(t))
+    print("Best Parameter : {}".format(dict))
+    print("Best Score : {}\n".format(score))
 
     return pred, model
 
@@ -417,7 +430,7 @@ def classifications(df):
 
     pred1, model1= knn(df, lbl, e)
     pred2, model2 = dt(df, lbl, e)
-    pred3, model3 = lr(df, lbl, e)
+    pred3, model3 = lr(df, lbl)
 
     list_pred = [pred1, pred2, pred3]
     model_names = ['KNN', 'DecisionTree', 'Logistic Regression']
@@ -449,7 +462,7 @@ def classifications(df):
 
 def clustering(df):
     lbl = df['churn']
-    #data = df.drop(['churn'], axis=1)
+    #data = df.drop(['churn'], axis=1).copy()
     data=df.copy()
 
     le = LabelEncoder()
@@ -463,45 +476,21 @@ def clustering(df):
 
     pred1, model1 = kmeans(data, e=e)
     pc = pca.fit_transform(data)
-    plt.scatter(pc[:, 0], pc[:, 1],c=pred1)
+    plt.title('KMeans')
+    plt.scatter(pc[:, 0], pc[:, 1],c=pred1,s=10)
     plt.show()
 
     pred2, model2 = gm(data, e=e)
     pc = pca.fit_transform(data)
-    plt.scatter(pc[:, 0], pc[:, 1],c=pred2)
+    plt.title('GaussianMixture')
+    plt.scatter(pc[:, 0], pc[:, 1],c=pred2,s=10)
     plt.show()
 
     pred3, model3 = meanshift(data, e=e)
     pc = pca.fit_transform(data)
-    plt.scatter(pc[:, 0], pc[:, 1],c=pred3)
+    plt.title('MeanShift')
+    plt.scatter(pc[:, 0], pc[:, 1],c=pred3,s=10)
     plt.show()
 
-    list_pred = [pred1, pred2, pred3]
-    model_names = ['KMeans', 'GaussianMixture', 'MeanShift']
-
-    # 각 모델마다 confusion matrix와 classification report 생성
-    for i, pred in enumerate(list_pred):
-        print("The confusion matrix and classification report of", model_names[i])
-        print(pd.DataFrame(confusion_matrix(lbl, pred)))
-        print(classification_report(lbl, pred, target_names=['Churn', 'Not Churn']))
-        print('\n')
-
-    model_list = [model1, model2, model3]
-    Color = ['red', 'blue', 'green']
-    plt.title("Roc Curve", fontsize=10)
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-
-    # 3개 모델 ROC CURVE 그래프 생성
-    for i, model in enumerate(model_list):
-        prob = model.predict_proba(data)
-        prob_positive = prob[:, 1]
-        fpr, tpr, threshold = roc_curve(lbl, prob_positive)
-        plt.plot(fpr, tpr, color=Color[i])
-        plt.gca().legend(model_names, loc='lower right', frameon=True)
-
-    plt.plot([0, 1], [0, 1], color='black', linestyle='--')
-    plt.show()
-
-#classifications(df)
+classifications(df)
 clustering(df)
