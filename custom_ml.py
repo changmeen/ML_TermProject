@@ -96,7 +96,8 @@ class AutoML:
             if y is not None:
                 model.fit(X, y)
                 if clus:
-                    score = silhouette_score(X, y)
+                    pred = model.predict(X)
+                    score = silhouette_score(X, pred)
                 else:
                     score = model.score(X, y)
             else:
@@ -274,16 +275,3 @@ class AutoML:
 
         return model.predict(X), model
 
-    def transform(self, X, y=None):
-        base_estimator = clone(self.estimator)
-        model = clone(base_estimator)
-        model.set_params(**self.best_dict)
-        if self.clus:
-            model.fit(X)
-        else:
-            if y is not None:
-                model.fit(X, y)
-            else:
-                model.fit(X)
-
-        return model.transform(X)

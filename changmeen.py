@@ -323,8 +323,6 @@ def dt(df, lbl=None, e=0): # criterion, max_depth, splitter
     return pred, model
 
 def lr(df, lbl=None, e=0): # solver, penalty, C
-    max_depth=list(range(1,20,4))
-    max_depth.insert(0, None)
     param = {
         'solver':['newton-cg','lbfgs','sag','saga'],
         'penalty':['none','l2'],
@@ -343,14 +341,12 @@ def lr(df, lbl=None, e=0): # solver, penalty, C
     return pred, model
 
 def kmeans(df, lbl=None, e=0): # n_clusters, init, n_init, algorithm, max_iter
-    n_init=list(range(1,20,4))
-    max_iter=list(range(1,400,64))
+    max_iter=list(range(1,200,32))
     param = {
         'n_clusters':[2],
         'init':['k-means++','random'],
-        'n_init':[n_init,4],
         'algorithm':['full','elkan'],
-        'max_iter':[max_iter,64]
+        'max_iter':[max_iter,32]
     }
 
     t = KMeans(random_state=42)
@@ -362,19 +358,15 @@ def kmeans(df, lbl=None, e=0): # n_clusters, init, n_init, algorithm, max_iter
     print(score)
     print(dict)
 
-    trans=temp.transform(df)
-
-    return trans, pred, model
+    return pred, model
 
 def gm(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, max_iter
-    n_init=list(range(1,20,4))
-    max_iter=list(range(1,400,64))
+    max_iter=list(range(1,200,32))
     param = {
         'n_components':[2],
         'covariance_type':['full','tied','diag','spherical'],
-        'n_init':[n_init,4],
         'init_params':['kmeans','random'],
-        'max_iter':[max_iter,64]
+        'max_iter':[max_iter,32]
     }
 
     t = GaussianMixture(random_state=42)
@@ -386,19 +378,16 @@ def gm(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, m
     print(score)
     print(dict)
 
-    trans = temp.transform(df)
-
-    return trans, pred, model
+    return pred, model
 
 def meanshift(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, max_iter
     n_init=list(range(1,20,4))
-    max_iter=list(range(1,400,64))
+    max_iter=list(range(1,200,32))
     param = {
         'n_components':[2],
         'covariance_type':['full','tied','diag','spherical'],
-        'n_init':[n_init,4],
         'init_params':['kmeans','random'],
-        'max_iter':[max_iter,64]
+        'max_iter':[max_iter,32]
     }
 
     t = GaussianMixture(random_state=42)
@@ -411,9 +400,7 @@ def meanshift(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_p
     print(score)
     print(dict)
 
-    trans = temp.transform(df)
-
-    return trans, pred, model
+    return pred, model
 
 
 def classifications(df):
@@ -474,19 +461,19 @@ def clustering(df):
 
     pca = PCA(n_components=2)
 
-    trans1, pred1, model1 = kmeans(data, e=e)
-    pc = pca.fit_transform(trans1)
-    plt.scatter(pc[:, 0], pc[:, 1],c=lbl)
+    pred1, model1 = kmeans(data, e=e)
+    pc = pca.fit_transform(data)
+    plt.scatter(pc[:, 0], pc[:, 1],c=pred1)
     plt.show()
 
-    trans2, pred2, model2 = gm(data, e=e)
-    pc = pca.fit_transform(trans2)
-    plt.scatter(pc[:, 0], pc[:, 1],c=lbl)
+    pred2, model2 = gm(data, e=e)
+    pc = pca.fit_transform(data)
+    plt.scatter(pc[:, 0], pc[:, 1],c=pred2)
     plt.show()
 
-    trans3, pred3, model3 = meanshift(data, e=e)
-    pc = pca.fit_transform(trans3)
-    plt.scatter(pc[:, 0], pc[:, 1],c=lbl)
+    pred3, model3 = meanshift(data, e=e)
+    pc = pca.fit_transform(data)
+    plt.scatter(pc[:, 0], pc[:, 1],c=pred3)
     plt.show()
 
     list_pred = [pred1, pred2, pred3]
