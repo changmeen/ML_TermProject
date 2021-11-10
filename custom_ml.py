@@ -19,6 +19,8 @@ class AutoML:
         self.jump={}
         self.e_value=e+1
         self.e=False
+        self.clus=False
+        self.best_dict={}
 
     def dict_keys(self): #입력받은 파라미터들의 key값들 불러오기
         return list(self.param_grid.keys())
@@ -74,13 +76,15 @@ class AutoML:
         base_estimator = clone(self.estimator)
         model = clone(base_estimator)
         model.set_params(**dict)
-        clus = False
+        clus  = False
         if 'KMeans' in str(model):
             clus = True
         elif 'GaussianMixture' in str(model):
             clus = True
         elif 'MeanShift' in str(model):
             clus = True
+
+        self.clus=clus
 
         print(dict)
         if self.cv is not None:
@@ -163,8 +167,9 @@ class AutoML:
                     if best_i != None: #best 파라미터가 None이 아니며
                         if jump != None: #jump값이 존재할때
                             while jump>1: #범위를 좁혀가며 최적의 값 탐색
-                                self.e = e
+                                #self.e = e
                                 min_i, max_i, jump = self.findbest(best_i, min_i, max_i, jump) #min max jump값 조정
+
                                 more = list(range(min_i, max_i + 1, jump)) #추가된 파라미터값
                                 if best_i in more:
                                     more.remove(best_i) #이미 계산된 파라미터 제거(best 파라미터)
@@ -173,14 +178,11 @@ class AutoML:
                                     q = []
                                     dict[keys[k]] = w
                                     score = self.cal(dict, X, y)
+
                                     if score >= best:
                                         if best * self.e_value >= score:  # 최대값 갱신할때 기존 최대값과 새로운 최대값의 오차가 앱실론 미만일때
                                             if e:  # 이미 앱실론 미만인 경우가 존재했으면 2번째 이후는 더이상 계산하는게 의미가 없다고 판단
                                                 e = False  # 초기화
-                                                best = score
-                                                best_i = w
-                                                best_dict = dict.copy()
-
                                                 q.append(w)
                                                 q.append(score)
                                                 t.append(q)
@@ -192,7 +194,6 @@ class AutoML:
                                         best = score
                                         best_i = w
                                         best_dict = dict.copy()
-
                                     q.append(w)
                                     q.append(score)
                                     t.append(q)
@@ -220,8 +221,7 @@ class AutoML:
                     if best_i != None:
                         if jump != None:
                             while jump>1:
-                                self.e = e
-                                print(best_i)
+                                #self.e = e
                                 min_i, max_i, jump = self.findbest(best_i, min_i, max_i, jump)
                                 more = list(range(min_i, max_i + 1, jump))
                                 if best_i in more:
@@ -252,9 +252,38 @@ class AutoML:
                                     t.append(q)
                     break
         self.e=False
+        self.best_dict=best_dict
         return t,best,best_dict #하위 파라미터의 생성된 파라미터 구조도, best값과 best 파라미터값들을 상위 파라미터에 전송
 
     def fit(self, X, y = None):
         dict={}
         return self.create(dict,0,X,y)
 
+    #
+    def predict(self,X,y=None):
+        base_estimator = clone(self.estimator)
+        model = clone(base_estimator)
+        model.set_params(**self.best_dict)
+        if self.clus:
+            model.fit(X)
+        else:
+            if y is not None:
+                model.fit(X, y)
+            else:
+                model.fit(X)
+
+        return model.predict(X), model
+
+    def transform(self, X, y=None):
+        base_estimator = clone(self.estimator)
+        model = clone(base_estimator)
+        model.set_params(**self.best_dict)
+        if self.clus:
+            model.fit(X)
+        else:
+            if y is not None:
+                model.fit(X, y)
+            else:
+                model.fit(X)
+
+        return model.transform(X)

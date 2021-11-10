@@ -14,6 +14,7 @@ from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import confusion_matrix, classification_report, roc_curve
 from custom_ml import AutoML
+from sklearn.decomposition import PCA
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=UserWarning)
@@ -293,15 +294,13 @@ def knn(df, lbl=None, e=0): # weight, p, neighbor
     result,score,dict=temp.fit(df, lbl)
 
     #최적의 파라미터가 저장된 dict를 이용하여 모델 생성후 pred
-    t1 = KNeighborsClassifier(weights=dict['weights'], n_neighbors=dict['n_neighbors'], p= dict['p'])
-    t1.fit(df,lbl)
-    pred = t1.predict(df)
+
+    pred, model=temp.predict(df,lbl)
 
     print(result)
     print(score)
     print(dict)
-
-    return pred, t1
+    return pred, model
 
 def dt(df, lbl=None, e=0): # criterion, max_depth, splitter
     max_depth=list(range(1,20,4))
@@ -316,15 +315,12 @@ def dt(df, lbl=None, e=0): # criterion, max_depth, splitter
     temp=AutoML(t,param_grid=param,cv=5,e=e)
     result,score,dict=temp.fit(df,lbl)
 
-    t1 = DecisionTreeClassifier(criterion=dict['criterion'], max_depth=dict['max_depth'],
-                                splitter=dict['splitter'], random_state=42)
-    t1.fit(df, lbl)
-    pred = t1.predict(df)
+    pred, model = temp.predict(df, lbl)
 
     print(result)
     print(score)
     print(dict)
-    return pred, t1
+    return pred, model
 
 def lr(df, lbl=None, e=0): # solver, penalty, C
     max_depth=list(range(1,20,4))
@@ -339,14 +335,12 @@ def lr(df, lbl=None, e=0): # solver, penalty, C
     temp=AutoML(t,param_grid=param,cv=5,e=e)
     result,score,dict=temp.fit(df,lbl)
 
-    t1 = LogisticRegression(solver=dict['solver'], penalty=dict['penalty'],C=dict['C'], random_state=42)
-    t1.fit(df, lbl)
-    pred = t1.predict(df)
+    pred, model = temp.predict(df, lbl)
 
     print(result)
     print(score)
     print(dict)
-    return pred, t1
+    return pred, model
 
 def kmeans(df, lbl=None, e=0): # n_clusters, init, n_init, algorithm, max_iter
     n_init=list(range(1,20,4))
@@ -362,9 +356,15 @@ def kmeans(df, lbl=None, e=0): # n_clusters, init, n_init, algorithm, max_iter
     t = KMeans(random_state=42)
     temp = AutoML(t, param_grid=param,e=e)
     result, score, dict = temp.fit(df,lbl)
+    pred, model = temp.predict(df, lbl)
+
     print(result)
     print(score)
     print(dict)
+
+    trans=temp.transform(df)
+
+    return trans, pred, model
 
 def gm(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, max_iter
     n_init=list(range(1,20,4))
@@ -380,9 +380,15 @@ def gm(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, m
     t = GaussianMixture(random_state=42)
     temp = AutoML(t, param_grid=param,e=e)
     result, score, dict = temp.fit(df,lbl)
+    pred, model = temp.predict(df, lbl)
+
     print(result)
     print(score)
     print(dict)
+
+    trans = temp.transform(df)
+
+    return trans, pred, model
 
 def meanshift(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, max_iter
     n_init=list(range(1,20,4))
@@ -399,9 +405,15 @@ def meanshift(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_p
     temp = AutoML(t, param_grid=param,e=e)
     result, score, dict = temp.fit(df,lbl)
 
+    pred, model = temp.predict(df, lbl)
+
     print(result)
     print(score)
     print(dict)
+
+    trans = temp.transform(df)
+
+    return trans, pred, model
 
 
 def classifications(df):
@@ -459,8 +471,50 @@ def clustering(df):
     st = StandardScaler()
     data = scaler(st, data)
     e = 0.01
-    #kmeans(data,e=e)
-    gm(data,e=e)
 
-classifications(df)
-#clustering(df)
+    pca = PCA(n_components=2)
+
+    trans1, pred1, model1 = kmeans(data, e=e)
+    pc = pca.fit_transform(trans1)
+    plt.scatter(pc[:, 0], pc[:, 1],c=lbl)
+    plt.show()
+
+    trans2, pred2, model2 = gm(data, e=e)
+    pc = pca.fit_transform(trans2)
+    plt.scatter(pc[:, 0], pc[:, 1],c=lbl)
+    plt.show()
+
+    trans3, pred3, model3 = meanshift(data, e=e)
+    pc = pca.fit_transform(trans3)
+    plt.scatter(pc[:, 0], pc[:, 1],c=lbl)
+    plt.show()
+
+    list_pred = [pred1, pred2, pred3]
+    model_names = ['KMeans', 'GaussianMixture', 'MeanShift']
+
+    # 각 모델마다 confusion matrix와 classification report 생성
+    for i, pred in enumerate(list_pred):
+        print("The confusion matrix and classification report of", model_names[i])
+        print(pd.DataFrame(confusion_matrix(lbl, pred)))
+        print(classification_report(lbl, pred, target_names=['Churn', 'Not Churn']))
+        print('\n')
+
+    model_list = [model1, model2, model3]
+    Color = ['red', 'blue', 'green']
+    plt.title("Roc Curve", fontsize=10)
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+
+    # 3개 모델 ROC CURVE 그래프 생성
+    for i, model in enumerate(model_list):
+        prob = model.predict_proba(data)
+        prob_positive = prob[:, 1]
+        fpr, tpr, threshold = roc_curve(lbl, prob_positive)
+        plt.plot(fpr, tpr, color=Color[i])
+        plt.gca().legend(model_names, loc='lower right', frameon=True)
+
+    plt.plot([0, 1], [0, 1], color='black', linestyle='--')
+    plt.show()
+
+#classifications(df)
+clustering(df)
