@@ -9,7 +9,7 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.cluster import KMeans, MeanShift
+from sklearn.cluster import KMeans, MeanShift, estimate_bandwidth
 from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import confusion_matrix, classification_report, roc_curve
@@ -221,7 +221,7 @@ df['occupation'] = df['occupation'].fillna('self_employed')
 city_mode = df['city'].mode()
 df['city'] = df['city'].fillna(float(city_mode))
 
-print(str(df.isnull().sum()) + "\n")
+# print(str(df.isnull().sum()) + "\n")
 
 # Now change gender into category type
 df['gender'] = df['gender'].astype('category')
@@ -238,21 +238,22 @@ non_outlier=['dependents',
 # Show outlier value.
 outlier_list = df.columns.tolist()
 outlier_list = [x for x in outlier_list if x not in non_outlier]
+"""
 for i in outlier_list:
     print(i)
     #outlier_show(i)
-
+"""
 # Find outlier indexes
 outlier_index = outlier(df, outlier_list)
 
 # Deletion outlier values.
 df = df.drop(outlier_index, axis=0).reset_index(drop=True)
 df = df.drop(df[df['average_monthly_balance_prevQ2']<0].index, axis=0).reset_index(drop=True)
-
+"""
 for i in outlier_list:
     print(i)
     #outlier_show(i)
-
+"""
 col=[
     'current_balance',
     'previous_month_end_balance',
@@ -278,8 +279,10 @@ df['previous income to spending ratio']=(df[col[5]]*100)/(df[col[5]]+df[col[7]]+
 def encoder(encoder, df):
     return encoder.fit_transform(df)
 
+
 def scaler(scaler, df):
     return scaler.fit_transform(df)
+
 
 def knn(df, lbl=None, e=0): # weight, p, neighbor
     n_neighbors = list(range(1, 20, 4))
@@ -304,6 +307,7 @@ def knn(df, lbl=None, e=0): # weight, p, neighbor
 
     return pred, model
 
+
 def dt(df, lbl=None, e=0): # criterion, max_depth, splitter
     max_depth=list(range(1,20,4))
     max_depth.insert(0, None)
@@ -314,7 +318,6 @@ def dt(df, lbl=None, e=0): # criterion, max_depth, splitter
     }
 
     t=DecisionTreeClassifier(random_state=42)
-    print("---------{}---------".format(t))
 
     temp=AutoML(t,param_grid=param,cv=5,e=e)
     result,score,dict=temp.fit(df,lbl)
@@ -326,6 +329,7 @@ def dt(df, lbl=None, e=0): # criterion, max_depth, splitter
     print("Best Score : {}\n".format(score))
 
     return pred, model
+
 
 def lr(df, lbl=None, e=0): # solver, penalty, C
     param = {
@@ -335,7 +339,6 @@ def lr(df, lbl=None, e=0): # solver, penalty, C
     }
 
     t=LogisticRegression(random_state=42)
-    print("---------{}---------".format(t))
 
     temp=AutoML(t,param_grid=param,cv=5,e=e)
     result,score,dict=temp.fit(df,lbl)
@@ -348,17 +351,15 @@ def lr(df, lbl=None, e=0): # solver, penalty, C
 
     return pred, model
 
+
 def kmeans(df, lbl=None, e=0): # n_clusters, init, n_init, algorithm, max_iter
-    max_iter=list(range(1,200,32))
     param = {
         'n_clusters':[2],
         'init':['k-means++','random'],
         'algorithm':['full','elkan'],
-        'max_iter':[max_iter,32]
     }
 
     t = KMeans(random_state=42)
-    print("---------{}---------".format(t))
 
     temp = AutoML(t, param_grid=param,e=e)
     result, score, dict = temp.fit(df,lbl)
@@ -369,18 +370,16 @@ def kmeans(df, lbl=None, e=0): # n_clusters, init, n_init, algorithm, max_iter
     print("Best Score : {}\n".format(score))
 
     return pred, model
+
 
 def gm(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, max_iter
-    max_iter=list(range(1,200,32))
     param = {
         'n_components':[2],
         'covariance_type':['full','tied','diag','spherical'],
-        'init_params':['kmeans','random'],
-        'max_iter':[max_iter,32]
+        'init_params':['kmeans','random']
     }
 
     t = GaussianMixture(random_state=42)
-    print("---------{}---------".format(t))
 
     temp = AutoML(t, param_grid=param,e=e)
     result, score, dict = temp.fit(df,lbl)
@@ -392,17 +391,14 @@ def gm(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, m
 
     return pred, model
 
+
 def meanshift(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, max_iter
-    max_iter=list(range(1,200,32))
+    bandwidth = estimate_bandwidth(df)
     param = {
-        'n_components':[2],
-        'covariance_type':['full','tied','diag','spherical'],
-        'init_params':['kmeans','random'],
-        'max_iter':[max_iter,32]
+        'bandwidth': [bandwidth],
     }
 
-    t = GaussianMixture(random_state=42)
-    print("---------{}---------".format(t))
+    t = MeanShift()
 
     temp = AutoML(t, param_grid=param,e=e)
     result, score, dict = temp.fit(df,lbl)
@@ -459,6 +455,8 @@ def classifications(df):
     plt.plot([0, 1], [0, 1], color='black', linestyle='--')
     plt.show()
 
+    return list_pred
+
 
 def clustering(df):
     lbl = df['churn']
@@ -473,7 +471,7 @@ def clustering(df):
     e = 0.01
 
     pca = PCA(n_components=2)
-
+    """
     pred1, model1 = kmeans(data, e=e)
     pc = pca.fit_transform(data)
     plt.title('KMeans')
@@ -485,12 +483,19 @@ def clustering(df):
     plt.title('GaussianMixture')
     plt.scatter(pc[:, 0], pc[:, 1],c=pred2,s=10)
     plt.show()
-
+    """
     pred3, model3 = meanshift(data, e=e)
     pc = pca.fit_transform(data)
     plt.title('MeanShift')
     plt.scatter(pc[:, 0], pc[:, 1],c=pred3,s=10)
     plt.show()
 
-classifications(df)
-clustering(df)
+    list_pred = [pred1, pred2, pred3]
+    return list_pred
+
+
+# classification_results = classifications(df)
+clustering_results = clustering(df)
+
+# print("classification_results", classification_results)
+print("clustering_results", clustering_results)

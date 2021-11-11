@@ -29,7 +29,7 @@ class AutoML:
     def dict_val(self, repeat=1): #dict -> list하고 jump값이 존재하는 key값 따로 분류하고 None값 존재여부 확인
         args=list(self.param_grid.values()) #dict -> list
         for k in range(len(args)): #args의 key의 value값들을 차례대로 호출
-            if(type(args[k][0])==list): #value값의 첫번째 값이 list값인지 확인 -> list값일 경우 jump값 존재한다고 판단
+            if(type(args[k][0])==list): # value값의 첫번째 값이 list값인지 확인 -> list값일 경우 jump값 존재한다고 판단
                 args[k].extend(args[k][0]) #list를 각 값으로 분해 [[1,2,3],4]->[[1,2,3],4,1,2,3]
 
                 self.jump[self.dict_keys()[k]]=args[k][1] #두번째값은 jump값이므로 따로 분리
@@ -87,7 +87,7 @@ class AutoML:
 
         self.clus=clus
 
-        #print(dict)
+        # print(dict)
         if self.cv is not None:
             if y is not None:
                 score = cross_val_score(model, X, y, cv=self.cv).mean()
@@ -232,17 +232,17 @@ class AutoML:
 
                     break
             else:
-                result,score,dict = self.create(dict, k + 1, X, y) #파라미터 구조도 생성 및 score 계산-> 재귀
-                if best<=score: #구조도 맨밑에 위치한 파라미터가 아닐때 해당 파라미터의 best값 갱신
+                result, score, dict = self.create(dict, k + 1, X, y) # 파라미터 구조도 생성 및 score 계산-> 재귀
+                if best<=score: # 구조도 맨밑에 위치한 파라미터가 아닐때 해당 파라미터의 best값 갱신
                     best_i = args[k][i]
 
-                    if best*self.e_value>score: #최대값 갱신할때 기존 최대값과 새로운 최대값의 오차가 앱실론 미만일때
-                        if e: #이미 앱실론 미만인 경우가 존재했으면 2번째 이후는 더이상 계산하는게 의미가 없다고 판단
+                    if best*self.e_value>score: # 최대값 갱신할때 기존 최대값과 새로운 최대값의 오차가 앱실론 미만일때
+                        if e: # 이미 앱실론 미만인 경우가 존재했으면 2번째 이후는 더이상 계산하는게 의미가 없다고 판단
                             i = len(args[k]) - 1 #건너뛰기
-                            e=False #초기화
-                        else: #처음 발견된 경우 다음 것도 확인
+                            e=False # 초기화
+                        else: # 처음 발견된 경우 다음 것도 확인
                             e=True
-                    else: #오차가 앱실론 미만일때 초기화
+                    else: # 오차가 앱실론 미만일때 초기화
                         e=False
                     best = score
                     best_dict = dict
@@ -319,7 +319,7 @@ class AutoML:
         self.e=False
         self.best_dict=best_dict
 
-
+        """
         xticks=[] #눈금
         for v in range(len(vi_total)): #시각화를 위해 파라미터값과 score값 분리
             vi_x=[] #파라미터 값
@@ -329,18 +329,22 @@ class AutoML:
                 vi_y.append(vi_total[v][temp][1])
                 xticks.append(vi_total[v][temp][0])
             plt.plot(vi_x, vi_y, marker='o',markersize=5)
+        """
         title_dict=best_dict.copy()
         temp_k=k
+        """
+        if None in xticks:
+            xticks.remove(None)
 
         xticks=sorted(list(set(xticks))) #눈금 중복 제거 및 정렬
-
+        """
         while True: #best_dict를 복사하고 상위 파라미터까지만 title로 함.
             try:
                 del(title_dict[keys[temp_k]])
             except:
                 break
             temp_k=temp_k+1
-
+        """
 
         plt.title(str(self.estimator)+" "+str(title_dict))
         plt.xlabel(keys[k])
@@ -348,13 +352,13 @@ class AutoML:
         plt.xticks(xticks)
         plt.scatter(best_i, best, marker='*', s=100,zorder=100000,color='r')  # best값 따로 표기
         plt.show()
-
         if k!=0:
             print("Base Parameter : {}".format(title_dict))
         print("Learning Parameter : {}".format(keys[k]))
         print("Parameter Best Score : {}, {} : {}\n".format(best,keys[k],best_i))
+        """
 
-        return t,best,best_dict #하위 파라미터의 생성된 파라미터 구조도, best값과 best 파라미터값들을 상위 파라미터에 전송
+        return t, best, best_dict # 하위 파라미터의 생성된 파라미터 구조도, best값과 best 파라미터값들을 상위 파라미터에 전송
 
     def fit(self, X, y = None):
         dict={}
