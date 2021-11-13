@@ -14,7 +14,7 @@ def numerical_vis_func(x):
     plt.hist(x,bins=10)
     plt.show()
 
-###6가지 column들 시각화 
+###Visualize 6 columns
 column_name_numerical=['vintage','age','dependents','city','customer_nw_category','branch_code'] 
 
 for i in range(len(column_name_numerical)):
@@ -34,7 +34,7 @@ for i in range(len(column_name_numerical)):
     numerical_vis_func(df[[column_name_numerical[i]]])
 
 
-####3가지 categorical data 시각화 
+####3 types of categorical data visualization
 column_name_category=['gender','occupation','churn']
 for i in range(len(column_name_category)):
     plt.title(column_name_category[i])
@@ -43,7 +43,7 @@ for i in range(len(column_name_category)):
     sns.countplot(df[column_name_category[i]])
     plt.show() 
 
-####Current value cloumns들 시각화 
+####Visualization with Current value cloumns 
 ####Current value visualization-------------------------------
 column_name_current=['current_balance','current_month_credit','current_month_debit','current_month_balance']    
 var_color_dict = {'current_balance': 'blue', 
@@ -61,7 +61,7 @@ for var, i, j in zip(var_color_dict, i, j):
 plt.show()
 ####--------------------------------------------
 
-####average value cloumns들 시각화 
+#### Visualization average value cloumns
 ####average mothly balance value visualization-------------------------------
 column_name_average=['average_monthly_balance_prevQ','average_monthly_balance_prevQ2']    
 figure = plt.figure(figsize=(18,6))
@@ -69,11 +69,11 @@ figure = plt.figure(figsize=(18,6))
 ax1 = plt.subplot(1,2,1)
 sns.distplot(df['average_monthly_balance_prevQ'], ax=ax1)
 ax2 = plt.subplot(1,2,2)
-sns.distplot(df['average_monthly_balance_prevQ2'], ax=ax2)    # 기본값은 kde(선) True, hist(막대) True
+sns.distplot(df['average_monthly_balance_prevQ2'], ax=ax2)    
 plt.show()
 #####--------------------------------------------
 
-####previous value cloumns들 시각화 
+#### Visualization previous value cloumns 
 ####previous value-------------------------------
 column_name_previous=['previous_month_end_balance','previous_month_credit','previous_month_debit','previous_month_balance']    
 var_color_dict2 = {'previous_month_end_balance': 'blue', 
@@ -92,7 +92,7 @@ plt.show()
 ###----------------------------------------
 
 
-# ####월단위로 추출한 Last transaction 시각화 
+# #### 'Last transaction' column visualization extracted by month
 # ##----------Last transaction barplot with only month-----------------
 # ## Creating an instance(data) of Datetimeindex class using last_transaction
 temp_df=df.copy()

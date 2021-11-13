@@ -9,12 +9,12 @@ from sklearn.metrics import silhouette_score
 from sklearn.base import clone
 
 class AutoML:
-    def __init__(self, #AutoML 파라미터 받기
+    def __init__(self,              
                  estimator,
                  param_grid,
                  cv=None,
-                 e=0):
-        self.estimator=estimator #최상위 파라미터들 -> 언제든 self.로 불러올 수 있다.
+                 e=0):    #Get AutoML Parameters
+        self.estimator=estimator #top-levels paramenters -> call self. at any time.
         self.cv=cv
         self.param_grid=param_grid
         self.jump={}
@@ -23,42 +23,42 @@ class AutoML:
         self.clus=False
         self.best_dict={}
 
-    def dict_keys(self): #입력받은 파라미터들의 key값들 불러오기
+    def dict_keys(self): #Calling the key values ​​of the input parameters
         return list(self.param_grid.keys())
 
-    def dict_val(self, repeat=1): #dict -> list하고 jump값이 존재하는 key값 따로 분류하고 None값 존재여부 확인
+    def dict_val(self, repeat=1): #dict -> list, separate key values ​​where jump values ​​exist, and check whether None values ​​exist
         args=list(self.param_grid.values()) #dict -> list
-        for k in range(len(args)): #args의 key의 value값들을 차례대로 호출
-            if(type(args[k][0])==list): # value값의 첫번째 값이 list값인지 확인 -> list값일 경우 jump값 존재한다고 판단
-                args[k].extend(args[k][0]) #list를 각 값으로 분해 [[1,2,3],4]->[[1,2,3],4,1,2,3]
+        for k in range(len(args)): #Calls the values ​​of the key of args in sequence
+            if(type(args[k][0])==list): # Check whether the first value of value is a list value -> If it is a list value, it is judged that a jump value exists
+                args[k].extend(args[k][0]) #seperate list [[1,2,3],4]->[[1,2,3],4,1,2,3]
 
-                self.jump[self.dict_keys()[k]]=args[k][1] #두번째값은 jump값이므로 따로 분리
-                del args[k][0:2] #list, jump값 제거하기 [1,2,3]
+                self.jump[self.dict_keys()[k]]=args[k][1] #The second value is a jump value, so it is separated
+                del args[k][0:2] #eliminate list, jump values [1,2,3]
 
-                if None in args[k]: #None값 있는지 확인하기
-                    args[k].remove(None) #있으면 지우고
-                    args[k].sort() #sort하고
-                    args[k].insert(0,None) #맨앞에 None값 넣어주기
+                if None in args[k]: #Check for None value
+                    args[k].remove(None) #delete if there is
+                    args[k].sort() #sort
+                    args[k].insert(0,None) #Put None-Value at the beginning
 
-                else: #없으면 걍 sort
+                else: #If there is nothing--> sort
                     args[k].sort()
         return args
 
-    def dict_list(self): #dict_val list화해서 return
+    def dict_list(self): #change dict_var to list & return
         return list(self.dict_val())
 
-    def findbest(self, best, min, max, jump):  # 베스트 찾고 위치 조정
-        if best == min: #best가 최소값일떄
+    def findbest(self, best, min, max, jump):  # find best & location adjustment
+        if best == min: #if best is min value
             max = best - jump
-            if best == 1: #best가 1이면 1~jump/2만큼 탐색
+            if best == 1: #if best=1, search by 1~jump/2
                 jump = (int)(jump / 2)
                 max = best + jump
             else:
                 jump = (int)(jump / 2)
                 min = best - jump
                 max = best + jump
-        elif best == max:  #best값이 max일때 탐색 범위 확장
-            if self.e: #오차가 앱실론미만일때 best가 max값이면 범위 좁히기(확장x)
+        elif best == max:  #When the best value is max, the search range is extended.
+            if self.e: #When the margin of error is less than absilon, if best is max, narrow the range (extension x)
                 jump = (int)(jump / 2)
                 max = best + jump
                 min = best - jump
@@ -66,14 +66,14 @@ class AutoML:
             else:
                 max = best + jump * 2
                 min = best + jump
-        else:  # best가 max보다 작고 min값보다 클때
+        else:  # When best value is less than max and greater than min
             jump = (int)(jump / 2)
             max = best + jump
             min = best - jump
 
         return min, max, jump
 
-    def cal(self,dict,X,y): #AutoML score 계산
+    def cal(self,dict,X,y): # Calculate AutoML score 
         base_estimator = clone(self.estimator)
         model = clone(base_estimator)
         model.set_params(**dict)
@@ -112,36 +112,36 @@ class AutoML:
 
         return score
 
-    def create(self,dict,k,X,y): #파라미터 구조도 생성 -> 재귀
+    def create(self,dict,k,X,y): #Create a parameter structure diagram -> recursion
         args = self.dict_list()
         keys = self.dict_keys()
-        try: #jump값 없으면 None값
+        try: #If there is no jump value, the value is None.
             jump = self.jump.get(keys[k])
         except:
             jump = None
 
-        score = 0 #구조도 맨밑의 파라미터가 jump값 존재시 score비교
-        best_dict={} #score가 가장 높은 파라미터 조합
+        score = 0 #Score comparison when the parameter at the bottom of the structure diagram has a jump value
+        best_dict={} #The combination of parameters with the highest score
         best = 0 #best score
-        best_i = 0 #best score일때 파라미터 값
-        t=[] #파라미터 구조도
-        min_i=-1 #파라미터 시작값
-        max_i=-1 #파라미터 종료값
+        best_i = 0 #Parameter value, when best score
+        t=[] #Parameter structure diagram
+        min_i=-1 #parameter starting value
+        max_i=-1 #parameter end value
 
-        visualize=[] #시각화
-        vi_total = [] #범위 확장하거나 축소시 구분을 위함
+        visualize=[] 
+        vi_total = [] #For classification, when expanding or reducing the range
 
         e=False
         for i in range(len(args[k])):
 
-            q=[] #temp 구조도
-            q.append(args[k][i]) #파라미터 저장
-            dict[keys[k]]=args[k][i] #파라미터 dict 생성
+            q=[] #temp structure
+            q.append(args[k][i]) #store parameter
+            dict[keys[k]]=args[k][i] #create parameter dict
 
-            if k == len(args) - 1: #구조도 맽밑 파라미터일때
-                score = self.cal(dict, X,y) #파라미터 score 구하기
+            if k == len(args) - 1: #When the structure diagram is the bottom parameter
+                score = self.cal(dict, X,y) #Get parameter score
 
-                if args[k][i]!=None: #None값이 아닐때 min max값 설정
+                if args[k][i]!=None: #Set min max value when not None
                     if min_i==-1:
                         min_i=args[k][i]
                     if max_i==-1:
@@ -151,63 +151,63 @@ class AutoML:
                     if max_i<args[k][i]:
                         max_i=args[k][i]
                         
-                if score>=best: #최대값 갱신
+                if score>=best: #max update
                     best_i = args[k][i]
 
-                    if best*self.e_value>score: #최대값 갱신할때 기존 최대값과 새로운 최대값의 오차가 앱실론 미만일때
-                        if e: #이미 앱실론 미만인 경우가 존재했으면 2번째 이후는 더이상 계산하는게 의미가 없다고 판단
-                            i = len(args[k]) - 1 #건너뛰기
-                            e=False #초기화
-                        else: #처음 발견된 경우 다음 것도 확인
+                    if best*self.e_value>score: #When the maximum value is updated, when the error between the old maximum value and the new maximum value is less than absilon
+                        if e: #If there has already been a case of less than Absilon, it is judged that it is meaningless to calculate any more after the second
+                            i = len(args[k]) - 1 #Skip
+                            e=False #reset
+                        else: #If found for the first time, also check
                             e=True
-                    else: #오차가 앱실론 미만일때 초기화
+                    else: #Reset when the error is less than Absilon
                         e=False
                     best = score
                     best_dict = dict
 
-                q.append(score) #파라미터의 score값 저장
-                t.append(q) #각 파라미터의 score값 저장
+                q.append(score) #Save the score value of the parameter
+                t.append(q) #Save the score of each parameter
 
                 visualize.append(q)
 
-                if i==len(args[k])-1: #파라미터 score를 모두 구했을 때
+                if i==len(args[k])-1: #When all parameter scores are obtained
 
-                    vi_total.append(visualize) #구분을 위해 저장
-                    visualize=[] #초기화
+                    vi_total.append(visualize) #save for identification
+                    visualize=[] #reset
 
-                    if best_i != None: #best 파라미터가 None이 아니며
-                        if jump != None: #jump값이 존재할때
-                            while jump>1: #범위를 좁혀가며 최적의 값 탐색
+                    if best_i != None: #best parameter is not None
+                        if jump != None: #When a jump value exists
+                            while jump>1: #Narrow the range to find the optimal value
                                 #self.e = e
-                                min_i, max_i, jump = self.findbest(best_i, min_i, max_i, jump) #min max jump값 조정
+                                min_i, max_i, jump = self.findbest(best_i, min_i, max_i, jump) #Adjust min max jump value
 
-                                more = list(range(min_i, max_i + 1, jump)) #추가된 파라미터값
+                                more = list(range(min_i, max_i + 1, jump)) #Added parameter value
                                 if best_i in more:
-                                    more.remove(best_i) #이미 계산된 파라미터 제거(best 파라미터)
+                                    more.remove(best_i) #Remove already calculated parameters (best parameters)
                                 more=filter(lambda a: a>0,more)
 
-                                temp_best=[best_i,best] #best값을 제외하고 계산하였으므로 best값 추가
+                                temp_best=[best_i,best] #Since the calculation was performed after excluding the best value, the best value was added.
                                 visualize.append(temp_best)
 
                                 e = False
-                                for w in more: #추가된 파라미터의 score 계산
+                                for w in more: #Calculate the score of the added parameter
                                     q = []
                                     dict[keys[k]] = w
                                     score = self.cal(dict, X, y)
 
                                     if score >= best:
-                                        if best * self.e_value >= score:  # 최대값 갱신할때 기존 최대값과 새로운 최대값의 오차가 앱실론 미만일때
-                                            if e:  # 이미 앱실론 미만인 경우가 존재했으면 2번째 이후는 더이상 계산하는게 의미가 없다고 판단
-                                                e = False  # 초기화
+                                        if best * self.e_value >= score:  # When the maximum value is updated, when the error between the old maximum value and the new maximum value is less than absilon
+                                            if e:  # If there has already been a case of less than Absilon, it is judged that it is meaningless to calculate any more after the second
+                                                e = False  # reset
                                                 q.append(w)
                                                 q.append(score)
                                                 t.append(q)
 
                                                 visualize.append(q)
                                                 break
-                                            else:  # 처음 발견된 경우 다음 것도 확인
+                                            else:  # If found for the first time, also check
                                                 e = True
-                                        else:  # 오차가 앱실론 미만일때 초기화
+                                        else:  # Reset when the error is less than Absilon
                                             e = False
                                         best = score
                                         best_i = w
@@ -219,10 +219,10 @@ class AutoML:
                                     visualize.append(q)
 
                                 try:
-                                    visualize = sorted(visualize, key=lambda visualize: visualize[0]) #섞인 파라미터 값들을 기준으로 score도 같이 sorted [13, 17, 15] -> [13, 15, 17]
-                                except: #오류발생시
+                                    visualize = sorted(visualize, key=lambda visualize: visualize[0]) #The score is also sorted based on the mixed parameter values [13, 17, 15] -> [13, 15, 17]
+                                except: #When an error occurs
                                     for v in range(len(visualize)):
-                                        if visualize[v][0] is None: #None을 0으로 치환
+                                        if visualize[v][0] is None: #Replace None with 0
                                             visualize[v][0]=0
                                             visualize = sorted(visualize, key=lambda visualize: visualize[0])
                                             break
@@ -232,17 +232,17 @@ class AutoML:
 
                     break
             else:
-                result, score, dict = self.create(dict, k + 1, X, y) # 파라미터 구조도 생성 및 score 계산-> 재귀
-                if best<=score: # 구조도 맨밑에 위치한 파라미터가 아닐때 해당 파라미터의 best값 갱신
+                result, score, dict = self.create(dict, k + 1, X, y) # Create parametric diagram and calculate score -> recursion
+                if best<=score: # When it is not a parameter located at the bottom of the structure diagram, the best value of the corresponding parameter is updated
                     best_i = args[k][i]
 
-                    if best*self.e_value>score: # 최대값 갱신할때 기존 최대값과 새로운 최대값의 오차가 앱실론 미만일때
-                        if e: # 이미 앱실론 미만인 경우가 존재했으면 2번째 이후는 더이상 계산하는게 의미가 없다고 판단
-                            i = len(args[k]) - 1 #건너뛰기
-                            e=False # 초기화
-                        else: # 처음 발견된 경우 다음 것도 확인
+                    if best*self.e_value>score: # When the maximum value is updated, when the error between the old maximum value and the new maximum value is less than absilon
+                        if e: # If there has already been a case of less than Absilon, it is judged that it is meaningless to calculate any more after the second
+                            i = len(args[k]) - 1 #skip
+                            e=False # reset
+                        else: # If found for the first time, also check
                             e=True
-                    else: # 오차가 앱실론 미만일때 초기화
+                    else: # Reset when the error is less than Absilon
                         e=False
                     best = score
                     best_dict = dict
@@ -265,7 +265,7 @@ class AutoML:
                                 min_i, max_i, jump = self.findbest(best_i, min_i, max_i, jump)
                                 more = list(range(min_i, max_i + 1, jump))
                                 if best_i in more:
-                                    more.remove(best_i)  # 이미 계산된 파라미터 제거(best 파라미터)
+                                    more.remove(best_i)  # Remove already calculated parameters (best parameters)
                                 more = filter(lambda a: a > 0, more)
 
                                 temp_best = [best_i, best]
@@ -275,11 +275,11 @@ class AutoML:
                                 for w in more:
                                     q = []
                                     dict[keys[k]] = w
-                                    result, score, dict = self.create(dict, k + 1, X, y) #추가된 파라미터의 구조도 생성 및 score 계산
+                                    result, score, dict = self.create(dict, k + 1, X, y) #Create a structure diagram of the added parameter and calculate the score
                                     if best <= score:
-                                        if best * self.e_value >= score:  # 최대값 갱신할때 기존 최대값과 새로운 최대값의 오차가 앱실론 미만일때
-                                            if e:  # 이미 앱실론 미만인 경우가 존재했으면 2번째 이후는 더이상 계산하는게 의미가 없다고 판단
-                                                e = False  # 초기화
+                                        if best * self.e_value >= score:  # When the maximum value is updated, when the error between the old maximum value and the new maximum value is less than absilon
+                                            if e:  # If there has already been a case of less than Absilon, it is judged that it is meaningless to calculate any more after the second
+                                                e = False  # reset
                                                 q.append(w)
                                                 q.append(result)
                                                 t.append(q)
@@ -288,9 +288,9 @@ class AutoML:
                                                 visualize.append(temp_w)
 
                                                 break;
-                                            else:  # 처음 발견된 경우 다음 것도 확인
+                                            else:  # If found for the first time, also check
                                                 e = True
-                                        else:  # 오차가 앱실론 미만일때 초기화
+                                        else:  # Reset when the error is less than Absilon
                                             e = False
                                         best_i = w
                                         best = score
@@ -304,10 +304,10 @@ class AutoML:
                                     visualize.append(temp_w)
 
                                 try:
-                                    visualize = sorted(visualize, key=lambda visualize: visualize[0])  # 섞인 파라미터 값들을 기준으로 score도 같이 sorted [13, 17, 15] -> [13, 15, 17]
-                                except:  # 오류발생시
+                                    visualize = sorted(visualize, key=lambda visualize: visualize[0])  # The score is also sorted based on the mixed parameter values [13, 17, 15] -> [13, 15, 17]
+                                except:  # When an error occurs
                                     for v in range(len(visualize)):
-                                        if visualize[v][0] is None:  # None을 0으로 치환
+                                        if visualize[v][0] is None:  # Replace None with 0
                                             visualize[v][0] = 0
                                             visualize = sorted(visualize, key=lambda visualize: visualize[0])
                                             break
@@ -320,10 +320,10 @@ class AutoML:
         self.best_dict=best_dict
 
         """
-        xticks=[] #눈금
-        for v in range(len(vi_total)): #시각화를 위해 파라미터값과 score값 분리
-            vi_x=[] #파라미터 값
-            vi_y=[] #score값
+        xticks=[] 
+        for v in range(len(vi_total)): #Separate parameter values ​​and score values ​​for visualization
+            vi_x=[] #parameter value
+            vi_y=[] #score value
             for temp in range(len(vi_total[v])):
                 vi_x.append(vi_total[v][temp][0])
                 vi_y.append(vi_total[v][temp][1])
@@ -336,9 +336,9 @@ class AutoML:
         if None in xticks:
             xticks.remove(None)
 
-        xticks=sorted(list(set(xticks))) #눈금 중복 제거 및 정렬
+        xticks=sorted(list(set(xticks))) #Remove and align grid duplicates
         """
-        while True: #best_dict를 복사하고 상위 파라미터까지만 title로 함.
+        while True: #Copy best_dict and use only the upper parameter as title.
             try:
                 del(title_dict[keys[temp_k]])
             except:
@@ -350,7 +350,7 @@ class AutoML:
         plt.xlabel(keys[k])
         plt.ylabel('Score')
         plt.xticks(xticks)
-        plt.scatter(best_i, best, marker='*', s=100,zorder=100000,color='r')  # best값 따로 표기
+        plt.scatter(best_i, best, marker='*', s=100,zorder=100000,color='r')  # write best value seperately
         plt.show()
         if k!=0:
             print("Base Parameter : {}".format(title_dict))
@@ -358,7 +358,7 @@ class AutoML:
         print("Parameter Best Score : {}, {} : {}\n".format(best,keys[k],best_i))
         """
 
-        return t, best, best_dict # 하위 파라미터의 생성된 파라미터 구조도, best값과 best 파라미터값들을 상위 파라미터에 전송
+        return t, best, best_dict # Structure diagram of created parameter of sub-parameter, Send the best value and best parameter values ​​to the upper parameter
 
     def fit(self, X, y = None):
         dict={}

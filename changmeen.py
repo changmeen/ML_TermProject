@@ -5,6 +5,7 @@ import seaborn as sns
 import warnings
 import sklearn.metrics as metrics
 from collections import Counter
+from sklearn.metrics.cluster import contingency_matrix
 from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
@@ -54,7 +55,7 @@ def scaler(scaler, df):
     scaled_features = scaler.fit_transform(df)
     return pd.DataFrame(scaled_features, index=df.index, columns=df.columns)
 
-
+#KNN functions
 def knn(df, lbl=None, e=0): # weight, p, neighbor
     n_neighbors = list(range(1, 20, 4))
     param = {
@@ -68,8 +69,8 @@ def knn(df, lbl=None, e=0): # weight, p, neighbor
     temp = AutoML(t, param_grid=param, cv=5,e=e)
     result, score, dict = temp.fit(df, lbl)
 
-    # 최적의 파라미터가 저장된 dict를 이용하여 모델 생성후 pred
-
+    # Using 'dict' with optimal parameters stored,predict after model creation
+    
     pred, model = temp.predict(df,lbl)
 
     print("---------{}---------".format(temp.estimator))
@@ -78,7 +79,7 @@ def knn(df, lbl=None, e=0): # weight, p, neighbor
 
     return pred, model
 
-
+#Decision Tree functions
 def dt(df, lbl=None, e=0): # criterion, max_depth, splitter
     max_depth=list(range(1,20,4))
     max_depth.insert(0, None)
@@ -101,7 +102,7 @@ def dt(df, lbl=None, e=0): # criterion, max_depth, splitter
 
     return pred, model
 
-
+#Logistic Regression functions
 def lr(df, lbl=None, e=0): # solver, penalty, C
     param = {
         'solver':['newton-cg','lbfgs','sag','saga'],
@@ -122,12 +123,15 @@ def lr(df, lbl=None, e=0): # solver, penalty, C
 
     return pred, model
 
-
+#Kmeans functions
 def kmeans(df, lbl=None, e=0): # n_clusters, init, n_init, algorithm, max_iter
+    max_iter = list(range(1, 200, 64))
     param = {
         'n_clusters':[2],
         'init':['k-means++','random'],
         'algorithm':['full','elkan'],
+        'max_iter':[max_iter,64]
+
     }
 
     t = KMeans(random_state=42)
@@ -142,12 +146,14 @@ def kmeans(df, lbl=None, e=0): # n_clusters, init, n_init, algorithm, max_iter
 
     return pred, model
 
-
+#Gaussian Mixture model function
 def gm(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, max_iter
+    max_iter = list(range(1, 200, 64))
     param = {
         'n_components':[2],
         'covariance_type':['full','tied','diag','spherical'],
-        'init_params':['kmeans','random']
+        'init_params':['kmeans','random'],
+        'max_iter': [max_iter, 64]
     }
 
     t = GaussianMixture(random_state=42)
@@ -162,15 +168,16 @@ def gm(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, m
 
     return pred, model
 
-
-def meanshift(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, max_iter
-    bandwidth = estimate_bandwidth(df)
+#Spectral Clustering function
+def sc(df, lbl=None,e=0): # n_clusters, eigen_solver,
+    n_neighbors = list(range(1, 20, 4))
     param = {
         'n_clusters':[2],
-        'eigen_solver':['arpack','lobpcg','amg',None]
+        'eigen_solver':['arpack','lobpcg','amg',None],
+        'n_neighbors': [n_neighbors, 4]
     }
 
-    t = SpectralClustering()
+    t = SpectralClustering(random_state=42)
 
     temp = AutoML(t, param_grid=param,e=e)
     result, score, dict = temp.fit(df,lbl)
@@ -180,7 +187,7 @@ def meanshift(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_p
     print("---------{}---------".format(t))
     print("Best Parameter : {}".format(dict))
     print("Best Score : {}\n".format(score))
-
+    print(np.unique(pred))
     return pred, model
 
 
@@ -194,10 +201,11 @@ def classifications(df, lbl):
     list_pred = [pred1, pred2, pred3]
     model_names = ['KNN', 'DecisionTree', 'Logistic Regression']
 
-    # 각 모델마다 confusion matrix와 classification report 생성
+    # Generate confusion matrix and classification report for each model
     for i, pred in enumerate(list_pred):
         print("The confusion matrix and classification report of", model_names[i])
-        print('accuracy', metrics.accuracy_score(lbl, pred))
+        print(pd.DataFrame(confusion_matrix(lbl, pred)))
+        print(classification_report(lbl, pred, target_names=['Churn', 'Not Churn']))
         print('\n')
 
     model_list = [model1, model2, model3]
@@ -206,7 +214,7 @@ def classifications(df, lbl):
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
 
-    # 3개 모델 ROC CURVE 그래프 생성
+    # Generate 3 Model ROC CURVE Graph 
     for i, model in enumerate(model_list):
         prob = model.predict_proba(df)
         prob_positive = prob[:, 1]
@@ -217,23 +225,15 @@ def classifications(df, lbl):
     plt.plot([0, 1], [0, 1], color='black', linestyle='--')
     plt.show()
 
-    return list_pred
+    
 
-
+#clustering using PCA
 def clustering(df):
-    lbl = df['churn']
-    #data = df.drop(['churn'], axis=1).copy()
     data=df.copy()
-
-    le = LabelEncoder()
-    data['occupation'] = encoder(le, data['occupation'])
-
-    st = StandardScaler()
-    data = scaler(st, data)
     e = 0.01
 
     pca = PCA(n_components=2)
-    """
+    
     pred1, model1 = kmeans(data, e=e)
     pc = pca.fit_transform(data)
     plt.title('KMeans')
@@ -245,16 +245,23 @@ def clustering(df):
     plt.title('GaussianMixture')
     plt.scatter(pc[:, 0], pc[:, 1],c=pred2,s=10)
     plt.show()
-    """
-    pred3, model3 = meanshift(data, e=e)
+    
+    pred3, model3 = sc(data, e=e)
     pc = pca.fit_transform(data)
-    plt.title('MeanShift')
+    plt.title('SpectralClustering')
     plt.scatter(pc[:, 0], pc[:, 1],c=pred3,s=10)
     plt.show()
 
+    model_names = ['Kmeans', 'GaussianMixture','SpectralClustering']
     list_pred = [pred1, pred2, pred3]
-    return list_pred
+    return list_pred, model_names
 
+#purity_score function
+def purity_score(y_true, y_pred):
+    # compute contingency matrix (also called confusion matrix)
+    contingency = contingency_matrix(y_true, y_pred)
+    # return purity
+    return np.sum(np.amax(contingency, axis=0)) / np.sum(contingency)
 
 df = pd.read_csv('Banking_churn_prediction.csv')
 
@@ -348,6 +355,7 @@ col=[
     'previous_month_debit'
 ]
 
+#Merge similar variables
 df['current credit usage']=(df[col[6]]*100)/(df[col[6]]+df[col[8]])
 df['previous credit usage']=(df[col[7]]*100)/(df[col[7]]+df[col[9]])
 df['current total spending']=df[col[6]]+df[col[8]]
@@ -361,19 +369,20 @@ df = df.drop(col, axis=1)
 # Drop customer_id
 df.drop(['customer_id'], axis=1, inplace=True)
 
-# df는 원본 데이터 data는 원본에서 churn을 땐거
+# df: drop 'churn' from origin dataset
 lbl = df['churn']
 data = df.drop(['churn'], axis=1)
 
+#Encoding 
 le = LabelEncoder()
 data['dependents'] = encoder(le, data['dependents'])
 data['city'] = encoder(le, data['city'])
 data['gender'] = encoder(le, data['gender'])
 data['occupation'] = encoder(le, data['occupation'])
 
+#Scaling
 st = StandardScaler()
 data = scaler(st, data)
-print(data)
 
 # Feature Selection(Using Select-KBest)-----------------
 X = data
@@ -388,7 +397,7 @@ dfscores = pd.DataFrame(fit.scores_)
 featureScores = pd.concat([dfcolumns, dfscores], axis=1)
 featureScores.columns = ['Spec', 'Score']
 
-# print(featureScores.nlargest(17, 'Score'))
+print(featureScores.nlargest(17, 'Score'))
 # ---------------------------------------------------------
 
 selected_features = ['current income to spending ratio',
@@ -399,8 +408,9 @@ selected_features = ['current income to spending ratio',
                      ]
 data = data[selected_features]
 
-classification_results = classifications(data, lbl)
-# clustering_results = clustering(df)
-
-print("classification_results", classification_results)
-# print("clustering_results", clustering_results)
+classifications(data, y)
+clustering_results, model_names = clustering(data)
+#Get purity score 
+for i, pred in enumerate(clustering_results):
+    purity = purity_score(y, pred)
+    print("Purity score of {}: {}".format(model_names[i], purity))
