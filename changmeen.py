@@ -3,13 +3,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
+import sklearn.metrics as metrics
 from collections import Counter
 from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.cluster import KMeans, MeanShift, estimate_bandwidth
+from sklearn.cluster import KMeans, estimate_bandwidth, SpectralClustering
 from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import confusion_matrix, classification_report, roc_curve
@@ -21,10 +22,6 @@ warnings.simplefilter(action='ignore', category=UserWarning)
 warnings.filterwarnings('ignore')
 sns.set(style='white')
 
-
-def outlier_show(variable):
-    sns.boxplot(df[variable])
-    plt.show()
 
 # Extract the index of the row with outliers from the feature
 def outlier(df, feature):
@@ -49,155 +46,13 @@ def outlier(df, feature):
     return outlier_index
 
 
-df = pd.read_csv('Banking_churn_prediction.csv')
-
-##Feature Selection(Using Select-KBest)-----------------
-df = df.fillna(method='ffill')
-df = df.drop(['last_transaction'], axis=1)
-
-feature_names = list(df.select_dtypes(object))
-
-encoder = LabelEncoder()
-for i in feature_names:
-    encoded = pd.DataFrame(encoder.fit_transform(df[i]), columns=[i])
-    #print(encoded)
-    df.drop(columns=i, inplace=True)
-    df = pd.concat((df, encoded), axis=1)
-    
-X = df.drop(['churn'], axis=1)
-y = df['churn']
-
-selector = SelectKBest(score_func=f_classif, k=19)
-fit = selector.fit(X, y)
-
-dfcolumns = pd.DataFrame(X.columns)
-dfscores = pd.DataFrame(fit.scores_)
-
-featureScores = pd.concat([dfcolumns, dfscores], axis=1)
-featureScores.columns = ['Spec', 'Score']
-
-print(featureScores.nlargest(19, 'Score'))
-#---------------------------------------------------------
-
-
-# Convert churn, branch_code, customer_nw_category to category type
-df['churn'] = df['churn'].astype('category')
-df['branch_code'] = df['branch_code'].astype('category')
-df['customer_nw_category'] = df['customer_nw_category'].astype('category')
-
-# Change dependents that values are over 4 into value 3
-fil = (df['dependents'] == 4) | (df['dependents'] == 5)\
-      | (df['dependents'] == 6) | (df['dependents'] == 7)\
-      | (df['dependents'] == 32) | (df['dependents'] == 50)\
-      | (df['dependents'] == 36) | (df['dependents'] == 52)\
-      | (df['dependents'] == 8) | (df['dependents'] == 9)\
-      | (df['dependents'] == 25)
-df.loc[fil, 'dependents'] = 3
-
-# Convert dependents, city to category type
-df['dependents'] = df['dependents'].astype('category')
-df['city'] = df['city'].astype('category')
-
-# Change gender and occupation type into category
-df['gender'] = df['gender'].astype('category')
-df['occupation'] = df['occupation'].astype('category')
-
-# Creating an instance(data) of Datetimeindex class using last_transaction
-df['last_transaction'] = pd.DatetimeIndex(df['last_transaction'])
-
-# There are only 3 values that last_transaction in 2018
-# All other records are in 2019 so drop 2018 values
-date = pd.DatetimeIndex(df['last_transaction'])
-df.drop(['last_transaction'], axis=1)
-indexNames = df[date.year == 2018].index
-df.drop(indexNames, inplace=True)
-df = df.reset_index(drop=True)
-
-# Dealing with nan values in last_transaction
-date = pd.DatetimeIndex(df['last_transaction'])
-df['last_transaction'] = date.month
-last_transaction_mode = df['last_transaction'].mode()
-df['last_transaction'] = df['last_transaction'].fillna(float(last_transaction_mode))
-
-# Drop customer_id
-df.drop(['customer_id'], axis=1, inplace=True)
-
-# Dealing with nan values in gender
-dict_gender = {'Male': 1, 'Female': 0}
-df.replace({'gender': dict_gender}, inplace=True)
-df['gender'] = df['gender'].fillna(method='ffill')
-
-# Dealing with nan values in dependents
-df['dependents'] = df['dependents'].fillna(0.0)
-
-# Dealing with nan values in occupation
-df['occupation'] = df['occupation'].fillna('self_employed')
-
-# Dealing with nan values in city
-city_mode = df['city'].mode()
-df['city'] = df['city'].fillna(float(city_mode))
-
-# print(str(df.isnull().sum()) + "\n")
-
-# Now change gender into category type
-df['gender'] = df['gender'].astype('category')
-
-non_outlier=['dependents',
-             'gender',
-             'occupation',
-             'city',
-             'customer_nw_category',
-             'branch_code',
-             'churn',
-             'last_transaction']
-
-# Show outlier value.
-outlier_list = df.columns.tolist()
-outlier_list = [x for x in outlier_list if x not in non_outlier]
-"""
-for i in outlier_list:
-    print(i)
-    #outlier_show(i)
-"""
-# Find outlier indexes
-outlier_index = outlier(df, outlier_list)
-
-# Deletion outlier values.
-df = df.drop(outlier_index, axis=0).reset_index(drop=True)
-df = df.drop(df[df['average_monthly_balance_prevQ2']<0].index, axis=0).reset_index(drop=True)
-"""
-for i in outlier_list:
-    print(i)
-    #outlier_show(i)
-"""
-col=[
-    'current_balance',
-    'previous_month_end_balance',
-    'average_monthly_balance_prevQ',
-    'average_monthly_balance_prevQ2',
-    'current_month_balance',
-    'previous_month_balance',
-    'current_month_credit',
-    'previous_month_credit',
-    'current_month_debit',
-    'previous_month_debit'
-]
-
-df['current credit usage']=(df[col[6]]*100)/(df[col[6]]+df[col[8]])
-df['previous credit usage']=(df[col[7]]*100)/(df[col[7]]+df[col[9]])
-df['current total spending']=df[col[6]]+df[col[8]]
-df['previous total spending']=df[col[7]]+df[col[9]]
-df['current total income']=df[col[4]]-df[col[6]]-df[col[8]]
-df['previous total income']=df[col[5]]-df[col[7]]-df[col[9]]
-df['current income to spending ratio']=(df[col[4]]*100)/(df[col[4]]+df[col[6]]+df[col[8]])
-df['previous income to spending ratio']=(df[col[5]]*100)/(df[col[5]]+df[col[7]]+df[col[9]])
-
 def encoder(encoder, df):
     return encoder.fit_transform(df)
 
 
 def scaler(scaler, df):
-    return scaler.fit_transform(df)
+    scaled_features = scaler.fit_transform(df)
+    return pd.DataFrame(scaled_features, index=df.index, columns=df.columns)
 
 
 def knn(df, lbl=None, e=0): # weight, p, neighbor
@@ -211,11 +66,11 @@ def knn(df, lbl=None, e=0): # weight, p, neighbor
     t = KNeighborsClassifier()
 
     temp = AutoML(t, param_grid=param, cv=5,e=e)
-    result,score,dict=temp.fit(df, lbl)
+    result, score, dict = temp.fit(df, lbl)
 
-    #최적의 파라미터가 저장된 dict를 이용하여 모델 생성후 pred
+    # 최적의 파라미터가 저장된 dict를 이용하여 모델 생성후 pred
 
-    pred, model=temp.predict(df,lbl)
+    pred, model = temp.predict(df,lbl)
 
     print("---------{}---------".format(temp.estimator))
     print("Best Parameter : {}".format(dict))
@@ -311,10 +166,11 @@ def gm(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, m
 def meanshift(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, max_iter
     bandwidth = estimate_bandwidth(df)
     param = {
-        'bandwidth': [bandwidth],
+        'n_clusters':[2],
+        'eigen_solver':['arpack','lobpcg','amg',None]
     }
 
-    t = MeanShift()
+    t = SpectralClustering()
 
     temp = AutoML(t, param_grid=param,e=e)
     result, score, dict = temp.fit(df,lbl)
@@ -328,16 +184,7 @@ def meanshift(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_p
     return pred, model
 
 
-def classifications(df):
-    lbl=df['churn']
-    df=df.drop(['churn'],axis=1)
-
-    le = LabelEncoder()
-    df['occupation'] = encoder(le, df['occupation'])
-
-    st = StandardScaler()
-    df = scaler(st, df)
-
+def classifications(df, lbl):
     e=0.01
 
     pred1, model1= knn(df, lbl, e)
@@ -350,8 +197,7 @@ def classifications(df):
     # 각 모델마다 confusion matrix와 classification report 생성
     for i, pred in enumerate(list_pred):
         print("The confusion matrix and classification report of", model_names[i])
-        print(pd.DataFrame(confusion_matrix(lbl, pred)))
-        print(classification_report(lbl, pred, target_names= ['Churn', 'Not Churn']))
+        print('accuracy', metrics.accuracy_score(lbl, pred))
         print('\n')
 
     model_list = [model1, model2, model3]
@@ -410,8 +256,151 @@ def clustering(df):
     return list_pred
 
 
-# classification_results = classifications(df)
-clustering_results = clustering(df)
+df = pd.read_csv('Banking_churn_prediction.csv')
 
-# print("classification_results", classification_results)
-print("clustering_results", clustering_results)
+# Convert churn, branch_code, customer_nw_category to category type
+df['churn'] = df['churn'].astype('category')
+df['branch_code'] = df['branch_code'].astype('category')
+df['customer_nw_category'] = df['customer_nw_category'].astype('category')
+
+# Change dependents that values are over 4 into value 3
+fil = (df['dependents'] == 4) | (df['dependents'] == 5)\
+      | (df['dependents'] == 6) | (df['dependents'] == 7)\
+      | (df['dependents'] == 32) | (df['dependents'] == 50)\
+      | (df['dependents'] == 36) | (df['dependents'] == 52)\
+      | (df['dependents'] == 8) | (df['dependents'] == 9)\
+      | (df['dependents'] == 25)
+df.loc[fil, 'dependents'] = 3
+
+# Convert dependents, city to category type
+df['dependents'] = df['dependents'].astype('category')
+df['city'] = df['city'].astype('category')
+
+# Change gender and occupation type into category
+df['gender'] = df['gender'].astype('category')
+df['occupation'] = df['occupation'].astype('category')
+
+# Creating an instance(data) of Datetimeindex class using last_transaction
+df['last_transaction'] = pd.DatetimeIndex(df['last_transaction'])
+
+# There are only 3 values that last_transaction in 2018
+# All other records are in 2019 so drop 2018 values
+date = pd.DatetimeIndex(df['last_transaction'])
+df.drop(['last_transaction'], axis=1)
+indexNames = df[date.year == 2018].index
+df.drop(indexNames, inplace=True)
+df = df.reset_index(drop=True)
+
+# Dealing with nan values in last_transaction
+date = pd.DatetimeIndex(df['last_transaction'])
+df['last_transaction'] = date.month
+last_transaction_mode = df['last_transaction'].mode()
+df['last_transaction'] = df['last_transaction'].fillna(float(last_transaction_mode))
+
+# Dealing with nan values in gender
+dict_gender = {'Male': 1, 'Female': 0}
+df.replace({'gender': dict_gender}, inplace=True)
+df['gender'] = df['gender'].fillna(method='ffill')
+
+# Dealing with nan values in dependents
+df['dependents'] = df['dependents'].fillna(0.0)
+
+# Dealing with nan values in occupation
+df['occupation'] = df['occupation'].fillna('self_employed')
+
+# Dealing with nan values in city
+city_mode = df['city'].mode()
+df['city'] = df['city'].fillna(float(city_mode))
+
+# Now change gender into category type
+df['gender'] = df['gender'].astype('category')
+
+non_outlier=['dependents',
+             'gender',
+             'occupation',
+             'city',
+             'customer_nw_category',
+             'branch_code',
+             'churn',
+             'last_transaction']
+
+# Show outlier value.
+outlier_list = df.columns.tolist()
+outlier_list = [x for x in outlier_list if x not in non_outlier]
+
+# Find outlier indexes
+outlier_index = outlier(df, outlier_list)
+
+# Deletion outlier values.
+df = df.drop(outlier_index, axis=0).reset_index(drop=True)
+df = df.drop(df[df['average_monthly_balance_prevQ2']<0].index, axis=0).reset_index(drop=True)
+
+col=[
+    'current_balance',
+    'previous_month_end_balance',
+    'average_monthly_balance_prevQ',
+    'average_monthly_balance_prevQ2',
+    'current_month_balance',
+    'previous_month_balance',
+    'current_month_credit',
+    'previous_month_credit',
+    'current_month_debit',
+    'previous_month_debit'
+]
+
+df['current credit usage']=(df[col[6]]*100)/(df[col[6]]+df[col[8]])
+df['previous credit usage']=(df[col[7]]*100)/(df[col[7]]+df[col[9]])
+df['current total spending']=df[col[6]]+df[col[8]]
+df['previous total spending']=df[col[7]]+df[col[9]]
+df['current total income']=df[col[4]]-df[col[6]]-df[col[8]]
+df['previous total income']=df[col[5]]-df[col[7]]-df[col[9]]
+df['current income to spending ratio']=(df[col[4]]*100)/(df[col[4]]+df[col[6]]+df[col[8]])
+df['previous income to spending ratio']=(df[col[5]]*100)/(df[col[5]]+df[col[7]]+df[col[9]])
+df = df.drop(col, axis=1)
+
+# Drop customer_id
+df.drop(['customer_id'], axis=1, inplace=True)
+
+# df는 원본 데이터 data는 원본에서 churn을 땐거
+lbl = df['churn']
+data = df.drop(['churn'], axis=1)
+
+le = LabelEncoder()
+data['dependents'] = encoder(le, data['dependents'])
+data['city'] = encoder(le, data['city'])
+data['gender'] = encoder(le, data['gender'])
+data['occupation'] = encoder(le, data['occupation'])
+
+st = StandardScaler()
+data = scaler(st, data)
+print(data)
+
+# Feature Selection(Using Select-KBest)-----------------
+X = data
+y = lbl
+
+selector = SelectKBest(score_func=f_classif, k=17)
+fit = selector.fit(X, y)
+
+dfcolumns = pd.DataFrame(X.columns)
+dfscores = pd.DataFrame(fit.scores_)
+
+featureScores = pd.concat([dfcolumns, dfscores], axis=1)
+featureScores.columns = ['Spec', 'Score']
+
+# print(featureScores.nlargest(17, 'Score'))
+# ---------------------------------------------------------
+
+selected_features = ['current income to spending ratio',
+                     'current total income', 'current total spending',
+                     'previous income to spending ratio',
+                     'current credit usage', 'previous total spending',
+                     'previous total income', 'previous credit usage'
+                     ]
+data = data[selected_features]
+
+classification_results = classifications(data, lbl)
+# clustering_results = clustering(df)
+
+print("classification_results", classification_results)
+# print("clustering_results", clustering_results)
