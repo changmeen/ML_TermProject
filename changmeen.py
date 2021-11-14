@@ -124,7 +124,7 @@ def lr(df, lbl=None, e=0): # solver, penalty, C
     return pred, model
 
 #Kmeans functions
-def kmeans(df, lbl=None, e=0): # n_clusters, init, n_init, algorithm, max_iter
+def kmeans(df, lbl=None, e=0): # n_clusters, init, algorithm, max_iter
     max_iter = list(range(1, 200, 64))
     param = {
         'n_clusters':[2],
@@ -147,7 +147,7 @@ def kmeans(df, lbl=None, e=0): # n_clusters, init, n_init, algorithm, max_iter
     return pred, model
 
 #Gaussian Mixture model function
-def gm(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, max_iter
+def gm(df, lbl=None,e=0): # n_components, covatiance_type, init_param, max_iter
     max_iter = list(range(1, 200, 64))
     param = {
         'n_components':[2],
@@ -169,11 +169,12 @@ def gm(df, lbl=None,e=0): # n_components, covatiance_type, n_init, init_param, m
     return pred, model
 
 #Spectral Clustering function
-def sc(df, lbl=None,e=0): # n_clusters, eigen_solver,
+def sc(df, lbl=None,e=0): # n_clusters, eigen_solver, n_neighbors
     n_neighbors = list(range(1, 20, 4))
     param = {
         'n_clusters':[2],
-        'eigen_solver':['arpack','lobpcg','amg',None],
+        'affinity':['nearest_neighbors','rbf'],
+        'assign_labels':['kmeans','discretize'],
         'n_neighbors': [n_neighbors, 4]
     }
 
@@ -187,7 +188,7 @@ def sc(df, lbl=None,e=0): # n_clusters, eigen_solver,
     print("---------{}---------".format(t))
     print("Best Parameter : {}".format(dict))
     print("Best Score : {}\n".format(score))
-    print(np.unique(pred))
+
     return pred, model
 
 
@@ -233,7 +234,7 @@ def clustering(df):
     e = 0.01
 
     pca = PCA(n_components=2)
-    
+
     pred1, model1 = kmeans(data, e=e)
     pc = pca.fit_transform(data)
     plt.title('KMeans')
@@ -245,7 +246,7 @@ def clustering(df):
     plt.title('GaussianMixture')
     plt.scatter(pc[:, 0], pc[:, 1],c=pred2,s=10)
     plt.show()
-    
+
     pred3, model3 = sc(data, e=e)
     pc = pca.fit_transform(data)
     plt.title('SpectralClustering')

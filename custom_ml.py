@@ -26,7 +26,7 @@ class AutoML:
     def dict_keys(self): #Calling the key values ​​of the input parameters
         return list(self.param_grid.keys())
 
-    def dict_val(self, repeat=1): #dict -> list, separate key values ​​where jump values ​​exist, and check whether None values ​​exist
+    def dict_val(self): #dict -> list, separate key values ​​where jump values ​​exist, and check whether None values ​​exist
         args=list(self.param_grid.values()) #dict -> list
         for k in range(len(args)): #Calls the values ​​of the key of args in sequence
             if(type(args[k][0])==list): # Check whether the first value of value is a list value -> If it is a list value, it is judged that a jump value exists
@@ -82,12 +82,11 @@ class AutoML:
             clus = True
         elif 'GaussianMixture' in str(model):
             clus = True
-        elif 'MeanShift' in str(model):
+        elif 'SpectralClustering' in str(model):
             clus = True
 
         self.clus=clus
 
-        # print(dict)
         if self.cv is not None:
             if y is not None:
                 score = cross_val_score(model, X, y, cv=self.cv).mean()
@@ -95,20 +94,19 @@ class AutoML:
                 score = cross_val_score(model, X, cv=self.cv).mean()
         else:
             if y is not None:
-                model.fit(X, y)
                 if clus:
-                    pred = model.predict(X)
+                    pred = model.fit_predict(X)
                     score = silhouette_score(X, pred)
                 else:
+                    model.fit(X, y)
                     score = model.score(X, y)
             else:
-                model.fit(X)
                 if clus:
-                    pred = model.predict(X)
+                    pred = model.fit_predict(X)
                     score = silhouette_score(X,pred)
                 else:
+                    model.fit(X)
                     score = model.score(X)
-        #print(score)
 
         return score
 
@@ -127,9 +125,6 @@ class AutoML:
         t=[] #Parameter structure diagram
         min_i=-1 #parameter starting value
         max_i=-1 #parameter end value
-
-        visualize=[] 
-        vi_total = [] #For classification, when expanding or reducing the range
 
         e=False
         for i in range(len(args[k])):
@@ -150,11 +145,11 @@ class AutoML:
                         min_i=args[k][i]
                     if max_i<args[k][i]:
                         max_i=args[k][i]
-                        
+
                 if score>=best: #max update
                     best_i = args[k][i]
 
-                    if best*self.e_value>score: #When the maximum value is updated, when the error between the old maximum value and the new maximum value is less than absilon
+                    if best*self.e_value>=score: #When the maximum value is updated, when the error between the old maximum value and the new maximum value is less than absilon
                         if e: #If there has already been a case of less than Absilon, it is judged that it is meaningless to calculate any more after the second
                             i = len(args[k]) - 1 #Skip
                             e=False #reset
@@ -163,31 +158,22 @@ class AutoML:
                     else: #Reset when the error is less than Absilon
                         e=False
                     best = score
-                    best_dict = dict
+                    best_dict = dict.copy()
 
                 q.append(score) #Save the score value of the parameter
                 t.append(q) #Save the score of each parameter
 
-                visualize.append(q)
-
                 if i==len(args[k])-1: #When all parameter scores are obtained
-
-                    vi_total.append(visualize) #save for identification
-                    visualize=[] #reset
 
                     if best_i != None: #best parameter is not None
                         if jump != None: #When a jump value exists
                             while jump>1: #Narrow the range to find the optimal value
-                                #self.e = e
                                 min_i, max_i, jump = self.findbest(best_i, min_i, max_i, jump) #Adjust min max jump value
 
                                 more = list(range(min_i, max_i + 1, jump)) #Added parameter value
                                 if best_i in more:
                                     more.remove(best_i) #Remove already calculated parameters (best parameters)
                                 more=filter(lambda a: a>0,more)
-
-                                temp_best=[best_i,best] #Since the calculation was performed after excluding the best value, the best value was added.
-                                visualize.append(temp_best)
 
                                 e = False
                                 for w in more: #Calculate the score of the added parameter
@@ -203,7 +189,6 @@ class AutoML:
                                                 q.append(score)
                                                 t.append(q)
 
-                                                visualize.append(q)
                                                 break
                                             else:  # If found for the first time, also check
                                                 e = True
@@ -216,19 +201,6 @@ class AutoML:
                                     q.append(score)
                                     t.append(q)
 
-                                    visualize.append(q)
-
-                                try:
-                                    visualize = sorted(visualize, key=lambda visualize: visualize[0]) #The score is also sorted based on the mixed parameter values [13, 17, 15] -> [13, 15, 17]
-                                except: #When an error occurs
-                                    for v in range(len(visualize)):
-                                        if visualize[v][0] is None: #Replace None with 0
-                                            visualize[v][0]=0
-                                            visualize = sorted(visualize, key=lambda visualize: visualize[0])
-                                            break
-
-                                vi_total.append(visualize)
-                                visualize = []
 
                     break
             else:
@@ -236,7 +208,7 @@ class AutoML:
                 if best<=score: # When it is not a parameter located at the bottom of the structure diagram, the best value of the corresponding parameter is updated
                     best_i = args[k][i]
 
-                    if best*self.e_value>score: # When the maximum value is updated, when the error between the old maximum value and the new maximum value is less than absilon
+                    if best*self.e_value>=score: # When the maximum value is updated, when the error between the old maximum value and the new maximum value is less than absilon
                         if e: # If there has already been a case of less than Absilon, it is judged that it is meaningless to calculate any more after the second
                             i = len(args[k]) - 1 #skip
                             e=False # reset
@@ -245,31 +217,21 @@ class AutoML:
                     else: # Reset when the error is less than Absilon
                         e=False
                     best = score
-                    best_dict = dict
+                    best_dict = dict.copy()
 
                 q.append(result)
                 t.append(q)
 
-                temp_w = [args[k][i], score]
-                visualize.append(temp_w)
-
                 if i==len(args[k])-1:
-
-                    vi_total.append(visualize)
-                    visualize = []
 
                     if best_i != None:
                         if jump != None:
                             while jump>1:
-                                #self.e = e
                                 min_i, max_i, jump = self.findbest(best_i, min_i, max_i, jump)
                                 more = list(range(min_i, max_i + 1, jump))
                                 if best_i in more:
                                     more.remove(best_i)  # Remove already calculated parameters (best parameters)
                                 more = filter(lambda a: a > 0, more)
-
-                                temp_best = [best_i, best]
-                                visualize.append(temp_best)
 
                                 e=False
                                 for w in more:
@@ -284,9 +246,6 @@ class AutoML:
                                                 q.append(result)
                                                 t.append(q)
 
-                                                temp_w = [w, score]
-                                                visualize.append(temp_w)
-
                                                 break;
                                             else:  # If found for the first time, also check
                                                 e = True
@@ -300,63 +259,12 @@ class AutoML:
                                     q.append(result)
                                     t.append(q)
 
-                                    temp_w = [w, score]
-                                    visualize.append(temp_w)
 
-                                try:
-                                    visualize = sorted(visualize, key=lambda visualize: visualize[0])  # The score is also sorted based on the mixed parameter values [13, 17, 15] -> [13, 15, 17]
-                                except:  # When an error occurs
-                                    for v in range(len(visualize)):
-                                        if visualize[v][0] is None:  # Replace None with 0
-                                            visualize[v][0] = 0
-                                            visualize = sorted(visualize, key=lambda visualize: visualize[0])
-                                            break
-
-
-                                vi_total.append(visualize)
-                                visualize = []
                     break
         self.e=False
+
         self.best_dict=best_dict
 
-        """
-        xticks=[] 
-        for v in range(len(vi_total)): #Separate parameter values ​​and score values ​​for visualization
-            vi_x=[] #parameter value
-            vi_y=[] #score value
-            for temp in range(len(vi_total[v])):
-                vi_x.append(vi_total[v][temp][0])
-                vi_y.append(vi_total[v][temp][1])
-                xticks.append(vi_total[v][temp][0])
-            plt.plot(vi_x, vi_y, marker='o',markersize=5)
-        """
-        title_dict=best_dict.copy()
-        temp_k=k
-        """
-        if None in xticks:
-            xticks.remove(None)
-
-        xticks=sorted(list(set(xticks))) #Remove and align grid duplicates
-        """
-        while True: #Copy best_dict and use only the upper parameter as title.
-            try:
-                del(title_dict[keys[temp_k]])
-            except:
-                break
-            temp_k=temp_k+1
-        """
-
-        plt.title(str(self.estimator)+" "+str(title_dict))
-        plt.xlabel(keys[k])
-        plt.ylabel('Score')
-        plt.xticks(xticks)
-        plt.scatter(best_i, best, marker='*', s=100,zorder=100000,color='r')  # write best value seperately
-        plt.show()
-        if k!=0:
-            print("Base Parameter : {}".format(title_dict))
-        print("Learning Parameter : {}".format(keys[k]))
-        print("Parameter Best Score : {}, {} : {}\n".format(best,keys[k],best_i))
-        """
 
         return t, best, best_dict # Structure diagram of created parameter of sub-parameter, Send the best value and best parameter values ​​to the upper parameter
 
@@ -369,7 +277,7 @@ class AutoML:
         model = clone(base_estimator)
         model.set_params(**self.best_dict)
         if self.clus:
-            model.fit(X)
+            return model.fit_predict(X), model
         else:
             if y is not None:
                 model.fit(X, y)
