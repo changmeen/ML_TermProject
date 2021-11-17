@@ -11,12 +11,13 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.cluster import KMeans, estimate_bandwidth, SpectralClustering
+from sklearn.cluster import KMeans, SpectralClustering
 from sklearn.mixture import GaussianMixture
-from sklearn.model_selection import cross_val_score
-from sklearn.metrics import confusion_matrix, classification_report, roc_curve
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import confusion_matrix, classification_report, roc_curve, silhouette_score
 from custom_ml import AutoML
 from sklearn.decomposition import PCA
+import time
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=UserWarning)
@@ -63,19 +64,35 @@ def knn(df, lbl=None, e=0): # weight, p, neighbor
         'p': [1, 2],
         'n_neighbors': [n_neighbors, 4]
     }
+    param_ = {
+        'weights': ['uniform', 'distance'],
+        'p': [1, 2],
+        'n_neighbors': n_neighbors
+    }
 
     t = KNeighborsClassifier()
 
-    temp = AutoML(t, param_grid=param, cv=5,e=e)
+    grid = GridSearchCV(t, param_grid=param_, cv=5)
+    grid_t = time.time()
+    grid.fit(df, lbl)
+    grid_t = time.time() - grid_t
+
+    temp = AutoML(t, param_grid=param, cv=5, e=e)
+    model_t = time.time()
     result, score, dict = temp.fit(df, lbl)
+    model_t = time.time() - model_t
 
     # Using 'dict' with optimal parameters stored,predict after model creation
     
     pred, model = temp.predict(df,lbl)
 
     print("---------{}---------".format(temp.estimator))
-    print("Best Parameter : {}".format(dict))
-    print("Best Score : {}\n".format(score))
+    print("GridSearchCV Time : {}".format(grid_t))
+    print("GridSearchCV Best Parameter : {}".format(grid.best_params_))
+    print("GridSearchCV Best Score : {}\n".format(grid.best_score_))
+    print("AutoML Time : {}".format(model_t))
+    print("AutoML Best Parameter : {}".format(dict))
+    print("AutoML Best Score : {}\n".format(score))
 
     return pred, model
 
@@ -88,17 +105,32 @@ def dt(df, lbl=None, e=0): # criterion, max_depth, splitter
         'splitter':['best','random'],
         'max_depth': [max_depth, 4]
     }
+    param_ = {
+        'criterion': ['gini', 'entropy'],
+        'splitter': ['best', 'random'],
+        'max_depth': max_depth
+    }
 
     t=DecisionTreeClassifier(random_state=42)
 
-    temp=AutoML(t,param_grid=param,cv=5,e=e)
-    result,score,dict=temp.fit(df,lbl)
+    grid = GridSearchCV(t, param_grid=param_, cv=5)
+    grid_t = time.time()
+    grid.fit(df, lbl)
+    grid_t = time.time() - grid_t
 
+    temp = AutoML(t, param_grid=param, cv=5, e=e)
+    model_t = time.time()
+    result, score, dict = temp.fit(df, lbl)
+    model_t = time.time() - model_t
     pred, model = temp.predict(df, lbl)
 
     print("---------{}---------".format(temp.estimator))
-    print("Best Parameter : {}".format(dict))
-    print("Best Score : {}\n".format(score))
+    print("GridSearchCV Time : {}".format(grid_t))
+    print("GridSearchCV Best Parameter : {}".format(grid.best_params_))
+    print("GridSearchCV Best Score : {}\n".format(grid.best_score_))
+    print("AutoML Time : {}".format(model_t))
+    print("AutoML Best Parameter : {}".format(dict))
+    print("AutoML Best Score : {}\n".format(score))
 
     return pred, model
 
@@ -112,14 +144,24 @@ def lr(df, lbl=None, e=0): # solver, penalty, C
 
     t=LogisticRegression(random_state=42)
 
-    temp=AutoML(t,param_grid=param,cv=5,e=e)
-    result,score,dict=temp.fit(df,lbl)
+    grid = GridSearchCV(t, param_grid=param, cv=5)
+    grid_t = time.time()
+    grid.fit(df, lbl)
+    grid_t = time.time() - grid_t
 
+    temp=AutoML(t,param_grid=param,cv=5,e=e)
+    model_t = time.time()
+    result, score, dict = temp.fit(df, lbl)
+    model_t = time.time() - model_t
     pred, model = temp.predict(df, lbl)
 
     print("---------{}---------".format(temp.estimator))
-    print("Best Parameter : {}".format(dict))
-    print("Best Score : {}\n".format(score))
+    print("GridSearchCV Time : {}".format(grid_t))
+    print("GridSearchCV Best Parameter : {}".format(grid.best_params_))
+    print("GridSearchCV Best Score : {}\n".format(grid.best_score_))
+    print("AutoML Time : {}".format(model_t))
+    print("AutoML Best Parameter : {}".format(dict))
+    print("AutoML Best Score : {}\n".format(score))
 
     return pred, model
 
@@ -131,18 +173,37 @@ def kmeans(df, lbl=None, e=0): # n_clusters, init, algorithm, max_iter
         'init':['k-means++','random'],
         'algorithm':['full','elkan'],
         'max_iter':[max_iter,64]
-
+    }
+    param_ = {
+        'n_clusters': [2],
+        'init': ['k-means++', 'random'],
+        'algorithm': ['full', 'elkan'],
+        'max_iter': max_iter
     }
 
     t = KMeans(random_state=42)
 
     temp = AutoML(t, param_grid=param,e=e)
+
+    grid = GridSearchCV(t, param_grid=param_)
+    grid_t=time.time()
+    grid.fit(df, lbl)
+    grid_t=time.time()-grid_t
+    pred = grid.predict(df)
+    sil = silhouette_score(df,pred)
+
+    model_t=time.time()
     result, score, dict = temp.fit(df,lbl)
+    model_t=time.time()-model_t
     pred, model = temp.predict(df, lbl)
 
     print("---------{}---------".format(temp.estimator))
-    print("Best Parameter : {}".format(dict))
-    print("Best Score : {}\n".format(score))
+    print("GridSearchCV Time : {}".format(grid_t))
+    print("GridSearchCV Best Parameter : {}".format(grid.best_params_))
+    print("GridSearchCV Best Score : {}\n".format(sil))
+    print("AutoML Time : {}".format(model_t))
+    print("AutoML Best Parameter : {}".format(dict))
+    print("AutoML Best Score : {}\n".format(score))
 
     return pred, model
 
@@ -150,21 +211,41 @@ def kmeans(df, lbl=None, e=0): # n_clusters, init, algorithm, max_iter
 def gm(df, lbl=None,e=0): # n_components, covatiance_type, init_param, max_iter
     max_iter = list(range(1, 200, 64))
     param = {
-        'n_components':[2],
-        'covariance_type':['full','tied','diag','spherical'],
-        'init_params':['kmeans','random'],
+        'n_components': [2],
+        'covariance_type': ['full', 'tied', 'diag', 'spherical'],
+        'init_params': ['kmeans', 'random'],
         'max_iter': [max_iter, 64]
+    }
+    param_ = {
+        'n_components': [2],
+        'covariance_type': ['full', 'tied', 'diag', 'spherical'],
+        'init_params': ['kmeans', 'random'],
+        'max_iter': max_iter
     }
 
     t = GaussianMixture(random_state=42)
 
     temp = AutoML(t, param_grid=param,e=e)
-    result, score, dict = temp.fit(df,lbl)
+
+    grid = GridSearchCV(t, param_grid=param_)
+    grid_t = time.time()
+    grid.fit(df, lbl)
+    grid_t = time.time() - grid_t
+    pred = grid.predict(df)
+    sil = silhouette_score(df, pred)
+
+    model_t = time.time()
+    result, score, dict = temp.fit(df, lbl)
+    model_t = time.time() - model_t
     pred, model = temp.predict(df, lbl)
 
     print("---------{}---------".format(temp.estimator))
-    print("Best Parameter : {}".format(dict))
-    print("Best Score : {}\n".format(score))
+    print("GridSearchCV Time : {}".format(grid_t))
+    print("GridSearchCV Best Parameter : {}".format(grid.best_params_))
+    print("GridSearchCV Best Score : {}\n".format(sil))
+    print("AutoML Time : {}".format(model_t))
+    print("AutoML Best Parameter : {}".format(dict))
+    print("AutoML Best Score : {}\n".format(score))
 
     return pred, model
 
@@ -177,17 +258,33 @@ def sc(df, lbl=None,e=0): # n_clusters, eigen_solver, n_neighbors
         'assign_labels':['kmeans','discretize'],
         'n_neighbors': [n_neighbors, 4]
     }
-
+    param_ = {
+        'n_clusters': [2],
+        'affinity': ['nearest_neighbors', 'rbf'],
+        'assign_labels': ['kmeans', 'discretize'],
+        'n_neighbors': n_neighbors
+    }
     t = SpectralClustering(random_state=42)
 
-    temp = AutoML(t, param_grid=param,e=e)
-    result, score, dict = temp.fit(df,lbl)
+    temp = AutoML(t, param_grid=param, e=e)
+    grid = AutoML(t, param_grid=param_)
 
+    grid_t = time.time()
+    grid_result, grid_score, grid_dict = grid.fit(df, lbl)
+    grid_t = time.time() - grid_t
+
+    model_t = time.time()
+    result, score, dict = temp.fit(df, lbl)
+    model_t = time.time() - model_t
     pred, model = temp.predict(df, lbl)
 
-    print("---------{}---------".format(t))
-    print("Best Parameter : {}".format(dict))
-    print("Best Score : {}\n".format(score))
+    print("---------{}---------".format(temp.estimator))
+    print("GridSearchCV Time : {}".format(grid_t))
+    print("GridSearchCV Best Parameter : {}".format(grid_dict))
+    print("GridSearchCV Best Score : {}\n".format(grid_score))
+    print("AutoML Time : {}".format(model_t))
+    print("AutoML Best Parameter : {}".format(dict))
+    print("AutoML Best Score : {}\n".format(score))
 
     return pred, model
 
