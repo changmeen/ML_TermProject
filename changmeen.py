@@ -18,6 +18,8 @@ from sklearn.metrics import confusion_matrix, classification_report, roc_curve, 
 from custom_ml import AutoML
 from sklearn.decomposition import PCA
 import time
+import eli5
+from eli5.sklearn import PermutationImportance
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=UserWarning)
@@ -94,6 +96,9 @@ def knn(df, lbl=None, e=0): # weight, p, neighbor
     print("AutoML Best Parameter : {}".format(dict))
     print("AutoML Best Score : {}\n".format(score))
 
+    perm = PermutationImportance(model, random_state=1).fit(df, lbl)
+    print(eli5.format_as_text(eli5.explain_weights(perm, feature_names=df.columns.tolist())))
+
     return pred, model
 
 #Decision Tree functions
@@ -132,6 +137,9 @@ def dt(df, lbl=None, e=0): # criterion, max_depth, splitter
     print("AutoML Best Parameter : {}".format(dict))
     print("AutoML Best Score : {}\n".format(score))
 
+    perm = PermutationImportance(model, random_state=1).fit(df, lbl)
+    print(eli5.format_as_text(eli5.explain_weights(perm, feature_names=df.columns.tolist())))
+
     return pred, model
 
 #Logistic Regression functions
@@ -162,6 +170,9 @@ def lr(df, lbl=None, e=0): # solver, penalty, C
     print("AutoML Time : {}".format(model_t))
     print("AutoML Best Parameter : {}".format(dict))
     print("AutoML Best Score : {}\n".format(score))
+
+    perm = PermutationImportance(model, random_state=1).fit(df, lbl)
+    print(eli5.format_as_text(eli5.explain_weights(perm, feature_names=df.columns.tolist())))
 
     return pred, model
 
@@ -495,7 +506,6 @@ dfscores = pd.DataFrame(fit.scores_)
 featureScores = pd.concat([dfcolumns, dfscores], axis=1)
 featureScores.columns = ['Spec', 'Score']
 
-print(featureScores.nlargest(17, 'Score'))
 # ---------------------------------------------------------
 
 selected_features = ['current income to spending ratio',
