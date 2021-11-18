@@ -71,9 +71,7 @@ def knn(df, lbl=None, e=0): # weight, p, neighbor
         'p': [1, 2],
         'n_neighbors': n_neighbors
     }
-
     t = KNeighborsClassifier()
-
     grid = GridSearchCV(t, param_grid=param_, cv=5)
     grid_t = time.time()
     grid.fit(df, lbl)
@@ -83,11 +81,7 @@ def knn(df, lbl=None, e=0): # weight, p, neighbor
     model_t = time.time()
     result, score, dict = temp.fit(df, lbl)
     model_t = time.time() - model_t
-
-    # Using 'dict' with optimal parameters stored,predict after model creation
-    
     pred, model = temp.predict(df,lbl)
-
     print("---------{}---------".format(temp.estimator))
     print("GridSearchCV Time : {}".format(grid_t))
     print("GridSearchCV Best Parameter : {}".format(grid.best_params_))
@@ -115,9 +109,7 @@ def dt(df, lbl=None, e=0): # criterion, max_depth, splitter
         'splitter': ['best', 'random'],
         'max_depth': max_depth
     }
-
     t=DecisionTreeClassifier(random_state=42)
-
     grid = GridSearchCV(t, param_grid=param_, cv=5)
     grid_t = time.time()
     grid.fit(df, lbl)
@@ -128,7 +120,6 @@ def dt(df, lbl=None, e=0): # criterion, max_depth, splitter
     result, score, dict = temp.fit(df, lbl)
     model_t = time.time() - model_t
     pred, model = temp.predict(df, lbl)
-
     print("---------{}---------".format(temp.estimator))
     print("GridSearchCV Time : {}".format(grid_t))
     print("GridSearchCV Best Parameter : {}".format(grid.best_params_))
@@ -136,10 +127,8 @@ def dt(df, lbl=None, e=0): # criterion, max_depth, splitter
     print("AutoML Time : {}".format(model_t))
     print("AutoML Best Parameter : {}".format(dict))
     print("AutoML Best Score : {}\n".format(score))
-
     perm = PermutationImportance(model, random_state=1).fit(df, lbl)
     print(eli5.format_as_text(eli5.explain_weights(perm, feature_names=df.columns.tolist())))
-
     return pred, model
 
 #Logistic Regression functions
@@ -191,18 +180,14 @@ def kmeans(df, lbl=None, e=0): # n_clusters, init, algorithm, max_iter
         'algorithm': ['full', 'elkan'],
         'max_iter': max_iter
     }
-
     t = KMeans(random_state=42)
-
     temp = AutoML(t, param_grid=param,e=e)
-
     grid = GridSearchCV(t, param_grid=param_)
     grid_t=time.time()
     grid.fit(df, lbl)
     grid_t=time.time()-grid_t
     pred = grid.predict(df)
     sil = silhouette_score(df,pred)
-
     model_t=time.time()
     result, score, dict = temp.fit(df,lbl)
     model_t=time.time()-model_t
@@ -233,11 +218,8 @@ def gm(df, lbl=None,e=0): # n_components, covatiance_type, init_param, max_iter
         'init_params': ['kmeans', 'random'],
         'max_iter': max_iter
     }
-
     t = GaussianMixture(random_state=42)
-
     temp = AutoML(t, param_grid=param,e=e)
-
     grid = GridSearchCV(t, param_grid=param_)
     grid_t = time.time()
     grid.fit(df, lbl)
@@ -276,10 +258,8 @@ def sc(df, lbl=None,e=0): # n_clusters, eigen_solver, n_neighbors
         'n_neighbors': n_neighbors
     }
     t = SpectralClustering(random_state=42)
-
     temp = AutoML(t, param_grid=param, e=e)
     grid = AutoML(t, param_grid=param_)
-
     grid_t = time.time()
     grid_result, grid_score, grid_dict = grid.fit(df, lbl)
     grid_t = time.time() - grid_t

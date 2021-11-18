@@ -126,6 +126,9 @@ class AutoML:
         min_i=-1 #parameter starting value
         max_i=-1 #parameter end value
 
+        visualize = []  # 시각화
+        vi_total = []  # 범위 확장하거나 축소시 구분을 위함
+
         e=False
         for i in range(len(args[k])):
 
@@ -148,22 +151,27 @@ class AutoML:
 
                 if score>=best: #max update
                     best_i = args[k][i]
-
-                    if best*self.e_value>=score: #When the maximum value is updated, when the error between the old maximum value and the new maximum value is less than absilon
-                        if e: #If there has already been a case of less than Absilon, it is judged that it is meaningless to calculate any more after the second
-                            i = len(args[k]) - 1 #Skip
-                            e=False #reset
-                        else: #If found for the first time, also check
-                            e=True
-                    else: #Reset when the error is less than Absilon
-                        e=False
+                    if jump != None:
+                        if best * self.e_value >= score:  # When the maximum value is updated, when the error between the old maximum value and the new maximum value is less than absilon
+                            if e:  # If there has already been a case of less than Absilon, it is judged that it is meaningless to calculate any more after the second
+                                i = len(args[k]) - 1  # Skip
+                                e = False  # reset
+                            else:  # If found for the first time, also check
+                                e = True
+                        else:  # Reset when the error is less than Absilon
+                            e = False
                     best = score
                     best_dict = dict.copy()
 
                 q.append(score) #Save the score value of the parameter
                 t.append(q) #Save the score of each parameter
 
+                visualize.append(q)
+
                 if i==len(args[k])-1: #When all parameter scores are obtained
+
+                    vi_total.append(visualize)  # 구분을 위해 저장
+                    visualize = []  # 초기화
 
                     if best_i != None: #best parameter is not None
                         if jump != None: #When a jump value exists
@@ -174,6 +182,9 @@ class AutoML:
                                 if best_i in more:
                                     more.remove(best_i) #Remove already calculated parameters (best parameters)
                                 more=filter(lambda a: a>0,more)
+
+                                temp_best = [best_i, best]  # best값을 제외하고 계산하였으므로 best값 추가
+                                visualize.append(temp_best)
 
                                 e = False
                                 for w in more: #Calculate the score of the added parameter
@@ -189,6 +200,7 @@ class AutoML:
                                                 q.append(score)
                                                 t.append(q)
 
+                                                visualize.append(q)
                                                 break
                                             else:  # If found for the first time, also check
                                                 e = True
@@ -201,28 +213,49 @@ class AutoML:
                                     q.append(score)
                                     t.append(q)
 
+                                    visualize.append(q)
+
+                                try:
+                                    visualize = sorted(visualize, key=lambda visualize: visualize[
+                                        0])
+                                except:
+                                    for v in range(len(visualize)):
+                                        if visualize[v][0] is None:
+                                            visualize[v][0] = 0
+                                            visualize = sorted(visualize, key=lambda visualize: visualize[0])
+                                            break
+
+                                vi_total.append(visualize)
+                                visualize = []
+
 
                     break
             else:
-                result, score, dict = self.create(dict, k + 1, X, y) # Create parametric diagram and calculate score -> recursion
+                result, score, dict = self.create(dict.copy(), k + 1, X, y) # Create parametric diagram and calculate score -> recursion
                 if best<=score: # When it is not a parameter located at the bottom of the structure diagram, the best value of the corresponding parameter is updated
                     best_i = args[k][i]
-
-                    if best*self.e_value>=score: # When the maximum value is updated, when the error between the old maximum value and the new maximum value is less than absilon
-                        if e: # If there has already been a case of less than Absilon, it is judged that it is meaningless to calculate any more after the second
-                            i = len(args[k]) - 1 #skip
-                            e=False # reset
-                        else: # If found for the first time, also check
-                            e=True
-                    else: # Reset when the error is less than Absilon
-                        e=False
+                    if jump!=None:
+                        if best * self.e_value >= score:  # When the maximum value is updated, when the error between the old maximum value and the new maximum value is less than absilon
+                            if e:  # If there has already been a case of less than Absilon, it is judged that it is meaningless to calculate any more after the second
+                                i = len(args[k]) - 1  # skip
+                                e = False  # reset
+                            else:  # If found for the first time, also check
+                                e = True
+                        else:  # Reset when the error is less than Absilon
+                            e = False
                     best = score
                     best_dict = dict.copy()
 
                 q.append(result)
                 t.append(q)
 
+                temp_w = [args[k][i], score]
+                visualize.append(temp_w)
+
                 if i==len(args[k])-1:
+
+                    vi_total.append(visualize)
+                    visualize = []
 
                     if best_i != None:
                         if jump != None:
@@ -233,11 +266,14 @@ class AutoML:
                                     more.remove(best_i)  # Remove already calculated parameters (best parameters)
                                 more = filter(lambda a: a > 0, more)
 
+                                temp_best = [best_i, best]
+                                visualize.append(temp_best)
+
                                 e=False
                                 for w in more:
                                     q = []
                                     dict[keys[k]] = w
-                                    result, score, dict = self.create(dict, k + 1, X, y) #Create a structure diagram of the added parameter and calculate the score
+                                    result, score, dict = self.create(dict.copy(), k + 1, X, y) #Create a structure diagram of the added parameter and calculate the score
                                     if best <= score:
                                         if best * self.e_value >= score:  # When the maximum value is updated, when the error between the old maximum value and the new maximum value is less than absilon
                                             if e:  # If there has already been a case of less than Absilon, it is judged that it is meaningless to calculate any more after the second
@@ -246,6 +282,8 @@ class AutoML:
                                                 q.append(result)
                                                 t.append(q)
 
+                                                temp_w = [w, score]
+                                                visualize.append(temp_w)
                                                 break;
                                             else:  # If found for the first time, also check
                                                 e = True
@@ -259,14 +297,62 @@ class AutoML:
                                     q.append(result)
                                     t.append(q)
 
+                                    temp_w = [w, score]
+                                    visualize.append(temp_w)
+
+                                try:
+                                    visualize = sorted(visualize, key=lambda visualize: visualize[0])
+                                except:  # 오류발생시
+                                    for v in range(len(visualize)):
+                                        if visualize[v][0] is None:
+                                            visualize[v][0] = 0
+                                            visualize = sorted(visualize, key=lambda visualize: visualize[0])
+                                            break
+
+                                vi_total.append(visualize)
+                                visualize = []
 
                     break
         self.e=False
 
-        self.best_dict=best_dict
+        self.best_dict=best_dict.copy()
+        xticks = []  # 눈금
+        for v in range(len(vi_total)):
+            vi_x = []
+            vi_y = []
+            for temp in range(len(vi_total[v])):
+                if jump!=None:
+                    if vi_total[v][temp][0]==None:
+                        vi_total[v][temp][0]=0
+                vi_x.append(vi_total[v][temp][0])
+                vi_y.append(vi_total[v][temp][1])
+                xticks.append(vi_total[v][temp][0])
+            plt.plot(vi_x, vi_y, marker='o', markersize=5)
+        title_dict = best_dict.copy()
+        temp_k = k
 
+        xticks = sorted(list(set(xticks)))
 
-        return t, best, best_dict # Structure diagram of created parameter of sub-parameter, Send the best value and best parameter values ​​to the upper parameter
+        while True:
+            try:
+                del (title_dict[keys[temp_k]])
+            except:
+                break
+            temp_k = temp_k + 1
+
+        plt.title(str(self.estimator) + " " + str(title_dict))
+        plt.xlabel(keys[k])
+        plt.ylabel('Score')
+        plt.xticks(xticks)
+        plt.scatter(best_i, best, marker='*', s=100, zorder=100000, color='r')  # best값 따로 표기
+        plt.show()
+
+        if k != 0:
+            print("Base Parameter : {}".format(title_dict))
+        print("Learning Parameter : {}".format(keys[k]))
+        print("Parameter Best Score : {}, {} : {}\n".format(best, keys[k], best_i))
+
+        return t, best, best_dict.copy() # Structure diagram of created parameter of sub-parameter, Send the best value and best parameter values ​​to the upper parameter
 
     def fit(self, X, y = None):
         dict={}
